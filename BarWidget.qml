@@ -34,18 +34,9 @@ BarWidget {
     return root.service && root.service.sleepOptions ? root.service.sleepOptions[key] : "keep"
   }
 
-  // The one-line dropdown: keep / Bluetooth off / Wi-Fi off / both off.
-  function sleepOffValue() {
-    var bt = root.sleepOption("bluetooth") === "off"
-    var wifi = root.sleepOption("wifi") === "off"
-    return bt && wifi ? "both" : bt ? "bt" : wifi ? "wifi" : "keep"
-  }
-  function setSleepOff(value) {
+  function toggleSleep(key) {
     if (!root.service) return
-    if (value === "keep") { root.service.setSleepOption("bluetooth", "keep"); root.service.setSleepOption("wifi", "keep") }
-    else if (value === "bt") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "keep") }
-    else if (value === "wifi") { root.service.setSleepOption("bluetooth", "keep"); root.service.setSleepOption("wifi", "off") }
-    else if (value === "both") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "off") }
+    root.service.setSleepOption(key, root.sleepOption(key) === "off" ? "keep" : "off")
   }
 
   function groupLabel(key) {
@@ -167,19 +158,35 @@ BarWidget {
         font.pixelSize: Style.font.caption
       }
 
-      Dropdown {
-        width: parent.width
-        label: root.t("sleepSection")
-        value: root.sleepOffValue()
-        options: [
-          { value: "keep", label: root.t("sleepOffNone") },
-          { value: "bt", label: root.t("btShort") },
-          { value: "wifi", label: root.t("wifiShort") },
-          { value: "both", label: root.t("sleepOffBoth") }
-        ]
+      PanelSectionHeader {
+        text: root.t("sleepSection")
         foreground: root.bar.foreground
         fontFamily: root.bar.fontFamily
-        onChanged: function(value) { root.setSleepOff(value) }
+      }
+
+      Row {
+        width: parent.width
+        spacing: Style.space(6)
+
+        Toggle {
+          width: (parent.width - parent.spacing) / 2
+          label: root.t("btName")
+          titleSize: Style.font.body
+          checked: root.sleepOption("bluetooth") === "off"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          onClicked: root.toggleSleep("bluetooth")
+        }
+
+        Toggle {
+          width: (parent.width - parent.spacing) / 2
+          label: root.t("wifiName")
+          titleSize: Style.font.body
+          checked: root.sleepOption("wifi") === "off"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          onClicked: root.toggleSleep("wifi")
+        }
       }
 
       Text {

@@ -16,7 +16,7 @@ var SLEEP_GAP = 120             // Wall delta exceeding jiffies delta by more th
 var MIN_HIST_AWAKE = 600        // All-time average only counts sessions awake for ≥10 minutes
 var MIN_SLEEP = 300             // Shorter gaps are noise (gauge settling, quick lid blips), not a measurable sleep period
 var MAX_PER_GROUP = 4           // Most recent sleep periods listed under each settings group
-var GROUP_ORDER = ["none", "bt", "wifi", "both", "unknown", "charger"]
+var GROUP_ORDER = ["none", "bt", "wifi", "both", "charger"]   // only groups with recorded settings are shown
 var HZ_CANDIDATES = [100, 250, 300, 1000]
 
 function parseRow(line) {

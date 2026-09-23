@@ -70,23 +70,21 @@ Right-click cycles the number between time left (all-time average), time left
 
 ```
 When sleeping
-  [ Nothing turned off ▾ ]
+  Bluetooth [ ]   Wi-Fi [ ]
 
 Sleep periods
-  Nothing turned off   2.7 W  (12)
-    09-11 11:09 → 11:43   2.1 W · 1.2 Wh
-    09-10 00:19 → 02:50   2.4 W · 6.0 Wh
-  Bluetooth off   1.8 W  (3)
-    09-23 18:18 → 18:28   on charger
-  Settings not recorded   2.6 W  (17)
+  Nothing turned off   2.8 W  (4)
+    09-23 20:11 → 20:43   2.1 W · 1.2 Wh
+  Bluetooth off   1.8 W  (2)
+    09-24 08:12 → 08:50   1.8 W · 1.1 Wh
 ```
 
-The list is grouped by what was turned off during the sleep, and each group
-carries its own average, so the groups can be compared directly. Up to four
-recent sleeps are listed per group, one line each: when it started and ended,
-the average power and the energy used. Sleeps on the charger stay visible in
-an "On charger" group without a power figure, which is why a short test sleep
-still shows up.
+Two checkboxes on one line pick what is turned off before suspend. The list is
+grouped by that setting, and each group carries its own average, so the groups
+can be compared directly. Up to four recent sleeps are listed per group, one
+line each: when it started and ended, the average power and the energy used.
+Sleeps on the charger stay visible in an "On charger" group without a power
+figure, which is why a short test sleep still shows up.
 
 Each sleep period is measured between the samples around it: duration from the
 awake tick counter (jiffies only advance while awake), energy from the battery
@@ -111,7 +109,9 @@ system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simpl
 
 - `~/.local/share/sleep-actions/YYYY-MM.tsv` — one file per month, last 12
   kept. This fork's own database; the original plugin's
-  `~/.local/share/battery-session` directory is no longer read or written.
+  `~/.local/share/battery-session` directory is not read or written. It starts
+  empty: statistics recorded before the settings column existed are not
+  imported, so every listed sleep belongs to one of the four settings groups.
 - `~/.local/share/sleep-actions/events.tsv` — settings changes and sleep
   actions, appended as above.
 - `~/.config/omarchy/sleep-actions.conf` — the two settings.
