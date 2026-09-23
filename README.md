@@ -73,16 +73,14 @@ When sleeping
   [ Nothing turned off ▾ ]
 
 Sleep periods
-  09-11 11:09 → 11:43   0h 33m
-    2.1 W · 1.2 Wh · settings not recorded
-  09-10 00:19 → 02:50   2h 30m
-    2.4 W · 6.0 Wh · settings not recorded
+  09-11 11:09 → 11:43   2.1 W · 1.2 Wh
+  09-10 00:19 → 02:50   2.4 W · 6.0 Wh
   average 2.7 W  (17)
 ```
 
-The "When sleeping" dropdown picks what is turned off before suspend, on one
-line: nothing, Bluetooth, Wi-Fi, or both. It uses `rfkill`, so the radio is
-blocked before the machine sleeps and unblocked again on wake (see below).
+One line per sleep: when it started and ended, the average power and the
+energy used. The recorded sleep action settings stay in the sample column and
+in `events.tsv` (see Logging below), not in the panel.
 
 Each sleep period is measured between the samples around it: duration from the
 awake tick counter (jiffies only advance while awake), energy from the battery

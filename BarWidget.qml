@@ -48,17 +48,6 @@ BarWidget {
     else if (value === "both") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "off") }
   }
 
-  // "Bluetooth off · Wi-Fi off" for a sleep period, from its recorded settings.
-  function offLabel(period) {
-    if (!period || !period.settings) return root.t("sleepSettingsUnknown")
-    if (period.settings.bluetooth === null && period.settings.wifi === null)
-      return root.t("sleepSettingsUnknown")
-    var parts = []
-    if (period.settings.bluetooth === "off") parts.push(root.t("btShort"))
-    if (period.settings.wifi === "off") parts.push(root.t("wifiShort"))
-    return parts.length ? parts.join(" · ") : root.t("sleepNothingOff")
-  }
-
   readonly property string mode: setting("barLabel", "remainHist")
   readonly property var labelSecs: !live ? null
     : mode === "awake" ? cur.awakeSecs
@@ -198,36 +187,22 @@ BarWidget {
 
       Column {
         width: parent.width
-        spacing: Style.space(5)
+        spacing: Style.space(4)
         visible: root.summary && root.summary.sleeps.length > 0
 
         Repeater {
           model: root.summary ? root.summary.sleeps : []
 
-          Column {
+          Text {
             required property var modelData
             width: parent.width
-            spacing: Style.space(1)
-
-            Text {
-              width: parent.width
-              text: Model.clockRange(modelData.startWall, modelData.endWall)
-                    + "   " + Model.hm(modelData.sleepSecs)
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.body
-            }
-
-            Text {
-              width: parent.width
-              text: root.fmtW(modelData.avgW)
-                    + " · " + modelData.usedWh.toFixed(1) + " Wh"
-                    + " · " + root.offLabel(modelData)
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-            }
+            text: Model.clockRange(modelData.startWall, modelData.endWall)
+                  + "   " + root.fmtW(modelData.avgW)
+                  + " · " + modelData.usedWh.toFixed(1) + " Wh"
+            color: root.bar.foreground
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
           }
         }
       }
