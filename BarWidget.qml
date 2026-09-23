@@ -48,6 +48,27 @@ BarWidget {
     else if (value === "both") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "off") }
   }
 
+  function groupLabel(key) {
+    return key === "none" ? root.t("sleepGroupNone")
+      : key === "bt" ? root.t("sleepGroupBt")
+      : key === "wifi" ? root.t("sleepGroupWifi")
+      : key === "both" ? root.t("sleepGroupBoth")
+      : key === "charger" ? root.t("sleepGroupCharger")
+      : root.t("sleepGroupUnknown")
+  }
+
+  // Icon follows the charge state: filled level while discharging, a charging
+  // glyph while charging, a charged glyph when full/topped up.
+  readonly property string batteryGlyph: {
+    if (!root.summary) return "󰁹"
+    if (root.summary.lastKind === "charging") return "󰂄"
+    if (root.summary.lastKind === "full") return "󰂅"
+    var p = root.summary.lastPct === null ? 100 : root.summary.lastPct
+    return p >= 95 ? "󰁹" : p >= 85 ? "󰂂" : p >= 75 ? "󰂁" : p >= 65 ? "󰂀"
+         : p >= 55 ? "󰁿" : p >= 45 ? "󰁾" : p >= 35 ? "󰁽" : p >= 25 ? "󰁼"
+         : p >= 15 ? "󰁻" : p >= 5 ? "󰁺" : "󰂃"
+  }
+
   readonly property string mode: setting("barLabel", "remainHist")
   readonly property var labelSecs: !live ? null
     : mode === "awake" ? cur.awakeSecs
@@ -84,7 +105,7 @@ BarWidget {
     Text {
       id: glyph
       anchors.verticalCenter: parent.verticalCenter
-      text: "󱧥"
+      text: root.batteryGlyph
       color: root.bar.barForeground
       font.family: root.bar.fontFamily
       font.pixelSize: Style.font.body
@@ -178,7 +199,7 @@ BarWidget {
       }
 
       Text {
-        visible: !root.summary || root.summary.sleeps.length === 0
+        visible: !root.summary || root.summary.sleepGroups.length === 0
         text: root.t("sleepNoData")
         color: Qt.darker(root.bar.foreground, 1.4)
         font.family: root.bar.fontFamily
@@ -187,35 +208,48 @@ BarWidget {
 
       Column {
         width: parent.width
-        spacing: Style.space(4)
-        visible: root.summary && root.summary.sleeps.length > 0
+        spacing: Style.space(7)
+        visible: root.summary && root.summary.sleepGroups.length > 0
 
         Repeater {
-          model: root.summary ? root.summary.sleeps : []
+          model: root.summary ? root.summary.sleepGroups : []
 
-          Text {
+          Column {
             required property var modelData
             width: parent.width
-            text: Model.clockRange(modelData.startWall, modelData.endWall)
-                  + "   " + root.fmtW(modelData.avgW)
-                  + " · " + modelData.usedWh.toFixed(1) + " Wh"
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.caption
-            elide: Text.ElideRight
+            spacing: Style.space(2)
+
+            Text {
+              width: parent.width
+              text: root.groupLabel(modelData.key)
+                    + (modelData.avgW !== null
+                       ? "   " + root.fmtW(modelData.avgW) + "  (" + modelData.avgCount + ")"
+                       : "   (" + modelData.count + ")")
+              color: root.bar.foreground
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: true
+              elide: Text.ElideRight
+            }
+
+            Repeater {
+              model: modelData.periods
+
+              Text {
+                required property var modelData
+                width: parent.width
+                text: Model.clockRange(modelData.startWall, modelData.endWall)
+                      + (modelData.avgW !== null
+                         ? "   " + root.fmtW(modelData.avgW) + " · " + modelData.usedWh.toFixed(1) + " Wh"
+                         : "   " + root.t("sleepCharging"))
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                elide: Text.ElideRight
+              }
+            }
           }
         }
-      }
-
-      Text {
-        visible: root.summary && root.summary.sleepAvgW !== null && root.summary.sleepCount > 0
-        text: root.summary && root.summary.sleepAvgW !== null
-          ? root.t("sleepAverage") + " " + root.fmtW(root.summary.sleepAvgW)
-            + "  (" + root.summary.sleepCount + ")"
-          : ""
-        color: Qt.darker(root.bar.foreground, 1.5)
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.caption
       }
     }
   }

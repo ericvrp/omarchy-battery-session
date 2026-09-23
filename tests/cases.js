@@ -75,7 +75,8 @@ sleepRows[2].pw = 0            // no awake energy between wake-up and the settle
 sleepRows[3].pw = 0
 const sp = ctx.sleepPeriods(sleepRows, HZ)
 check(sp.length === 1 && Math.abs(sp[0].avgW - 2.0) < 0.001
-      && sp[0].settings.bluetooth === "off" && sp[0].settings.wifi === "keep",
+      && sp[0].settings.bluetooth === "off" && sp[0].settings.wifi === "keep"
+      && sp[0].group === "bt",
       "sleepPeriods: 60 min, 2 Wh, bluetooth off recorded", JSON.stringify(sp))
 // Gauge settling: the first post-wake sample understates the drain; a normal
 // sample one minute later is used instead, minus the energy spent awake.
@@ -85,13 +86,25 @@ check(settled.length === 1 && Math.abs(settled[0].avgW - 1.0167) < 0.01,
       "sleepPeriods: settled sample corrects the post-wake gauge lag",
       settled.length ? String(settled[0].avgW) : "no period")
 const spNoSettings = ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.0], [61, "0", 18.0, 1]]), HZ)
-check(spNoSettings.length === 1 && spNoSettings[0].settings.bluetooth === null,
+check(spNoSettings.length === 1 && spNoSettings[0].settings.bluetooth === null
+      && spNoSettings[0].group === "unknown",
       "sleepPeriods: missing settings column reads as unrecorded")
-check(ctx.sleepPeriods(rows([[0, "1", 20.5], [1, "1", 20.0], [61, "1", 18.0, 1]]), HZ).length === 0,
-      "sleepPeriods: on-charger window ignored")
+const charger = ctx.sleepPeriods(rows([[0, "1", 20.5], [1, "1", 20.0], [61, "1", 18.0, 1]]), HZ)
+check(charger.length === 1 && charger[0].charger === true && charger[0].avgW === null
+      && charger[0].group === "charger",
+      "sleepPeriods: on-charger window kept without a power figure")
 check(ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.4], [3, "0", 20.3, 1]]), HZ).length === 0,
       "sleepPeriods: shorter than the minimum ignored")
+const sum = ctx.summarize(sleepRows, T0 + 4000)
+check(sum.sleepGroups.length === 1 && sum.sleepGroups[0].key === "bt"
+      && Math.abs(sum.sleepGroups[0].avgW - 2.0) < 0.01 && sum.sleepGroups[0].avgCount === 1,
+      "summarize: periods grouped by turned-off setting with a group average")
+check(ctx.chargeKind({ state: "Discharging", ac: "0" }) === "discharging"
+      && ctx.chargeKind({ state: "Charging", ac: "1" }) === "charging"
+      && ctx.chargeKind({ state: "Full", ac: "1" }) === "full"
+      && ctx.chargeKind({ state: "Not charging", ac: "1" }) === "full",
+      "chargeKind: discharging / charging / full")
 
-const checks = cases.length + parseCases.length + 5
+const checks = cases.length + parseCases.length + 7
 console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)

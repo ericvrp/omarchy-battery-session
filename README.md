@@ -48,7 +48,7 @@ Two additions make the settings visible to the measurements:
 - Every 60 s sample gains a ninth column with the policy in effect at that
   moment, e.g. `bt=off;wifi=keep`. Rows written before the fork have eight
   fields and read as "no settings recorded".
-- `~/.local/share/battery-session/events.tsv` gets a line at every change and
+- `~/.local/share/sleep-actions/events.tsv` gets a line at every change and
   every action (tab separated `wall`, `event`, `detail`):
 
 ```
@@ -73,14 +73,20 @@ When sleeping
   [ Nothing turned off ▾ ]
 
 Sleep periods
-  09-11 11:09 → 11:43   2.1 W · 1.2 Wh
-  09-10 00:19 → 02:50   2.4 W · 6.0 Wh
-  average 2.7 W  (17)
+  Nothing turned off   2.7 W  (12)
+    09-11 11:09 → 11:43   2.1 W · 1.2 Wh
+    09-10 00:19 → 02:50   2.4 W · 6.0 Wh
+  Bluetooth off   1.8 W  (3)
+    09-23 18:18 → 18:28   on charger
+  Settings not recorded   2.6 W  (17)
 ```
 
-One line per sleep: when it started and ended, the average power and the
-energy used. The recorded sleep action settings stay in the sample column and
-in `events.tsv` (see Logging below), not in the panel.
+The list is grouped by what was turned off during the sleep, and each group
+carries its own average, so the groups can be compared directly. Up to four
+recent sleeps are listed per group, one line each: when it started and ended,
+the average power and the energy used. Sleeps on the charger stay visible in
+an "On charger" group without a power figure, which is why a short test sleep
+still shows up.
 
 Each sleep period is measured between the samples around it: duration from the
 awake tick counter (jiffies only advance while awake), energy from the battery
@@ -91,25 +97,22 @@ understate a sleep.
 Power (W) and energy (Wh) are absolute, so they can be compared across
 machines and battery sizes; a percentage-per-hour figure is deliberately not
 shown because it would depend on the battery capacity. The recorded sleep
-action settings are shown per period, so a `Bluetooth off` night can be
-compared with a default one. Rows from before the fork say
-`settings not recorded`.
+action settings are also kept in the sample column and in `events.tsv` (see
+Logging above), so the group of any period can be checked against the raw
+data.
 
-The average at the bottom covers every measured sleep period in the retained
-history (the last 12 monthly files), not only the six listed. Time-left
-estimates and the bar label still use awake power only; suspend energy is
-never mixed into them.
+Group averages cover every measured period in the retained history (the last
+12 monthly files), not only the listed ones. Time-left estimates and the bar
+label still use awake power only; suspend energy is never mixed into them.
 Languages: English, Traditional Chinese and Simplified Chinese, following the
 system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simplified).
 
 ## Data files
 
-- `~/.local/share/battery-session/YYYY-MM.tsv` — one file per month, last 12
-  kept. The directory is shared with the original plugin on purpose: renaming
-  the fork does not throw away the recorded history. Do not enable the
-  original and this fork at the same time; both would append to the same
-  month file.
-- `~/.local/share/battery-session/events.tsv` — settings changes and sleep
+- `~/.local/share/sleep-actions/YYYY-MM.tsv` — one file per month, last 12
+  kept. This fork's own database; the original plugin's
+  `~/.local/share/battery-session` directory is no longer read or written.
+- `~/.local/share/sleep-actions/events.tsv` — settings changes and sleep
   actions, appended as above.
 - `~/.config/omarchy/sleep-actions.conf` — the two settings.
 - `~/.local/state/omarchy/sleep-actions/applied` — what is currently blocked
@@ -149,7 +152,7 @@ omarchy plugin remove ericvrp.sleep-actions
 Removing does not delete recorded data. To remove that too:
 
 ```bash
-rm -rf ~/.local/share/battery-session ~/.local/state/omarchy/sleep-actions
+rm -rf ~/.local/share/sleep-actions ~/.local/state/omarchy/sleep-actions
 rm -f ~/.config/omarchy/sleep-actions.conf
 ```
 

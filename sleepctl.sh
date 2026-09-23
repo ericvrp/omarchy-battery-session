@@ -21,7 +21,7 @@
 #
 # State and logs:
 #   ~/.local/state/omarchy/sleep-actions/applied   what this plugin blocked
-#   ~/.local/share/battery-session/events.tsv      timestamped action log
+#   ~/.local/share/sleep-actions/events.tsv      timestamped action log
 #
 # Trust boundary: parsing is bash builtins; external programs are all by
 # absolute path - /usr/bin/dd for every file read and write, /usr/bin/mkdir,
@@ -59,7 +59,7 @@ ensure_dir() {  # ensure_dir <path> [mode]
 
 ensure_dir "$home/.local" || exit 5
 ensure_dir "$home/.local/share" || exit 5
-data=$home/.local/share/battery-session
+data=$home/.local/share/sleep-actions
 ensure_dir "$data" 700 || exit 5
 ensure_dir "$home/.local/state" || exit 5
 ensure_dir "$home/.local/state/omarchy" || exit 5

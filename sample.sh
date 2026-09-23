@@ -18,7 +18,7 @@
 # Trust boundary. Everything is bash builtins reading /sys and /proc. External
 # programs, all by absolute path: /usr/bin/dd for every file read and write,
 # /usr/bin/mkdir for missing directories, /usr/bin/rm for monthly retention.
-# The data directory is ~/.local/share/battery-session with ~ taken from the
+# The data directory is ~/.local/share/sleep-actions with ~ taken from the
 # password database (HOME is unset), never from environment strings. File
 # opens are bound to the checks: dd opens with O_NOFOLLOW (a symlink at the
 # path fails), O_NONBLOCK (a fifo or device cannot block), O_EXCL when creating
@@ -47,7 +47,7 @@ max_file_bytes=4194304      # 4 MiB per month file; a month at one row per minut
 mode=${1-sample}
 [[ $mode == sample || $mode == load ]] || exit 2
 
-# ---- data directory: ~/.local/share/battery-session, verified at every level ----
+# ---- data directory: ~/.local/share/sleep-actions, verified at every level ----
 # HOME is unset above, so ~ comes from the password database.
 home=~
 [[ $home == /* && -d $home && ! -L $home && -O $home ]] || exit 5
@@ -60,7 +60,7 @@ ensure_dir() {  # ensure_dir <path> [mode]
 }
 ensure_dir "$home/.local" || exit 5
 ensure_dir "$home/.local/share" || exit 5
-dir=$home/.local/share/battery-session
+dir=$home/.local/share/sleep-actions
 ensure_dir "$dir" 700 || exit 5
 
 # Owned regular file, not a symlink. Path-based; the dd flags re-check symlink
@@ -144,8 +144,8 @@ elif [[ -n $q && -n $v ]];   then wh=$(fix2 $(( q * v )) 12); fi
 if   [[ -n $p ]];            then pw=$(fix2 "$p" 6)
 elif [[ -n $i && -n $v ]];   then pw=$(fix2 $(( i * v )) 12); fi
 
-# ---- sleep action policy at sample time ----
-sbt=keep; swifi=keep; settings=""
+# ---- sleep action policy at sample time (defaults when no config exists) ----
+sbt=keep; swifi=keep
 scfg=$home/.config/omarchy/sleep-actions.conf
 if [[ -f $scfg && ! -L $scfg && -O $scfg && -r $scfg ]]; then
   sn=0
@@ -154,8 +154,8 @@ if [[ -f $scfg && ! -L $scfg && -O $scfg && -r $scfg ]]; then
     [[ $sk == bluetooth && $sv == off ]] && sbt=off
     [[ $sk == wifi && $sv == off ]] && swifi=off
   done < "$scfg"
-  settings="bt=$sbt;wifi=$swifi"
 fi
+settings="bt=$sbt;wifi=$swifi"
 
 printf -v line '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
   "$wall" "$jiffies" "$boot" "$pct" "$state" "$ac" "$wh" "$pw" "$settings"

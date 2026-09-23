@@ -22,6 +22,10 @@ var TABLE = {
     sleepPeriods: "Sleep periods", sleepNoData: "No sleep recorded yet",
     sleepAverage: "average", sleepSettingsUnknown: "settings not recorded",
     sleepNothingOff: "nothing turned off", btShort: "Bluetooth off", wifiShort: "Wi-Fi off",
+    sleepGroupNone: "Nothing turned off", sleepGroupBt: "Bluetooth off",
+    sleepGroupWifi: "Wi-Fi off", sleepGroupBoth: "Bluetooth + Wi-Fi off",
+    sleepGroupUnknown: "Settings not recorded", sleepGroupCharger: "On charger",
+    sleepCharging: "on charger",
     err: "Sampler", errNoBattery: "no battery found", errClock: "system clock not synced yet", errDataDir: "data directory failed ownership check", errKilled: "timed out and was killed"
   },
   "zh-Hant": {
@@ -43,6 +47,10 @@ var TABLE = {
     sleepPeriods: "睡眠期間", sleepNoData: "還沒有睡眠紀錄",
     sleepAverage: "平均", sleepSettingsUnknown: "沒有設定紀錄",
     sleepNothingOff: "沒有關閉項目", btShort: "藍牙關閉", wifiShort: "Wi-Fi 關閉",
+    sleepGroupNone: "不關閉任何項目", sleepGroupBt: "藍牙關閉",
+    sleepGroupWifi: "Wi-Fi 關閉", sleepGroupBoth: "藍牙與 Wi-Fi 關閉",
+    sleepGroupUnknown: "沒有設定紀錄", sleepGroupCharger: "接電中",
+    sleepCharging: "接電中",
     err: "取樣器", errNoBattery: "沒有電池", errClock: "系統時鐘還沒同步", errDataDir: "資料目錄擁有者檢查失敗", errKilled: "逾時被強制結束"
   },
   "zh-Hans": {
@@ -64,6 +72,10 @@ var TABLE = {
     sleepPeriods: "睡眠期间", sleepNoData: "还没有睡眠记录",
     sleepAverage: "平均", sleepSettingsUnknown: "没有设置记录",
     sleepNothingOff: "没有关闭项目", btShort: "蓝牙关闭", wifiShort: "Wi-Fi 关闭",
+    sleepGroupNone: "不关闭任何项目", sleepGroupBt: "蓝牙关闭",
+    sleepGroupWifi: "Wi-Fi 关闭", sleepGroupBoth: "蓝牙与 Wi-Fi 关闭",
+    sleepGroupUnknown: "没有设置记录", sleepGroupCharger: "接电中",
+    sleepCharging: "接电中",
     err: "采样器", errNoBattery: "没有电池", errClock: "系统时钟尚未同步", errDataDir: "数据目录所有者检查失败", errKilled: "超时被强制结束"
   }
 }
