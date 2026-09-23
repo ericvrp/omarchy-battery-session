@@ -6,7 +6,11 @@
 # with a cleared environment (PATH=/usr/bin, LC_ALL=C and TZ only).
 #
 # Sample line, printed to stdout and appended to this month's file:
-#   wall  jiffies  boot  pct  state  ac  energy_wh  power_w
+#   wall  jiffies  boot  pct  state  ac  energy_wh  power_w  settings
+# settings is the sleep action policy in effect at sample time, compact and
+# tab-free: "bt=off;wifi=keep" (see sleepctl.sh). Empty if unreadable. The
+# column was added by the renamed fork; rows written before it simply have
+# eight fields and the reader treats them as "no settings recorded".
 # jiffies is the global tick count from the second line of /proc/schedstat. It
 # only advances while the machine is awake and freezes during suspend. Stored
 # raw; the reader derives HZ from adjacent samples.
@@ -140,13 +144,27 @@ elif [[ -n $q && -n $v ]];   then wh=$(fix2 $(( q * v )) 12); fi
 if   [[ -n $p ]];            then pw=$(fix2 "$p" 6)
 elif [[ -n $i && -n $v ]];   then pw=$(fix2 $(( i * v )) 12); fi
 
-printf -v line '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' "$wall" "$jiffies" "$boot" "$pct" "$state" "$ac" "$wh" "$pw"
+# ---- sleep action policy at sample time ----
+sbt=keep; swifi=keep; settings=""
+scfg=$home/.config/omarchy/sleep-actions.conf
+if [[ -f $scfg && ! -L $scfg && -O $scfg && -r $scfg ]]; then
+  sn=0
+  while IFS='=' read -r sk sv; do
+    (( sn++ >= 16 )) && break
+    [[ $sk == bluetooth && $sv == off ]] && sbt=off
+    [[ $sk == wifi && $sv == off ]] && swifi=off
+  done < "$scfg"
+  settings="bt=$sbt;wifi=$swifi"
+fi
+
+printf -v line '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+  "$wall" "$jiffies" "$boot" "$pct" "$state" "$ac" "$wh" "$pw" "$settings"
 
 # ---- append to this month's file ----
 f=$dir/$year-$mon.tsv
 if [[ ! -e $f && ! -L $f ]]; then
   # O_CREAT|O_EXCL|O_NOFOLLOW: fails if anything appeared at the path meanwhile.
-  printf 'wall\tjiffies\tboot\tpct\tstate\tac\tenergy_wh\tpower_w\n' \
+  printf 'wall\tjiffies\tboot\tpct\tstate\tac\tenergy_wh\tpower_w\tsettings\n' \
     | $DD of="$f" conv=excl,notrunc oflag=nofollow status=none || exit 5
 fi
 owned_file "$f" || exit 5

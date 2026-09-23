@@ -6,6 +6,9 @@
 // advances while the machine is awake, freezes during suspend and resets on boot
 // (detected via the boot column), so missed samples do not matter: the next one
 // carries the full difference.
+// The optional ninth column (settings) is the sleep action policy in effect at
+// sample time ("bt=off;wifi=keep"), added by the renamed fork; older rows have
+// eight fields and get an empty string.
 
 var SANE_WALL = 1500000000      // 2017. Rows written before NTP sync at boot are garbage
 var WH_JITTER = 1.0             // Energy rising by more than this while discharging = charged in between. The gauge itself drifts ±0.6
@@ -22,7 +25,8 @@ function parseRow(line) {
     wall: wall, jiffies: parseFloat(p[1]), boot: p[2],
     pct: p[3], state: p[4], ac: p[5],
     wh: p[6] === "" ? null : parseFloat(p[6]),
-    pw: p[7] === "" || p[7] === undefined ? null : parseFloat(p[7])
+    pw: p[7] === "" || p[7] === undefined ? null : parseFloat(p[7]),
+    settings: p.length >= 9 ? String(p[8]) : ""
   }
 }
 

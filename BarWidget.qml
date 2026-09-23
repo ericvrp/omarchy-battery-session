@@ -8,7 +8,7 @@ import "Strings.js" as S
 // Display only. One per screen, all reading the same Service.
 BarWidget {
   id: root
-  moduleName: "hungmi.battery-session"
+  moduleName: "ericvrp.sleep-actions"
 
   // Reading _services makes the binding re-evaluate when the service loads later
   readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function"
@@ -17,7 +17,7 @@ BarWidget {
   readonly property var cur: summary ? summary.current : null
   readonly property bool live: cur ? cur.live : false
 
-  // Which value the bar shows; set via: omarchy bar set hungmi.battery-session barLabel <value>
+  // Which value the bar shows; set via: omarchy bar set ericvrp.sleep-actions barLabel <value>
   //   remainHist  time left, all-time average (current session included). Default:
   //               steadier than the session average right after unplugging
   //   remainCur   time left, this session's average
@@ -27,6 +27,12 @@ BarWidget {
   function t(key) { return S.t(lang, key) }
   // Watts: Chinese "6.8 W", English "6.8W" as in the built-in Omarchy panels
   function fmtW(x) { return x.toFixed(1) + (zh ? " W" : "W") }
+
+  // Sleep action setting mirrored from sleepctl.sh; "keep" until the service
+  // has read the file.
+  function sleepOption(key) {
+    return root.service && root.service.sleepOptions ? root.service.sleepOptions[key] : "keep"
+  }
 
   readonly property string mode: setting("barLabel", "remainHist")
   readonly property var labelSecs: !live ? null
@@ -195,6 +201,42 @@ BarWidget {
             elide: Text.ElideRight
           }
         }
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
+
+      PanelSectionHeader {
+        text: root.t("sleepSection")
+        foreground: root.bar.foreground
+        fontFamily: root.bar.fontFamily
+      }
+
+      Toggle {
+        width: parent.width
+        label: root.t("btOff")
+        description: root.t("btOffDesc")
+        checked: root.sleepOption("bluetooth") === "off"
+        foreground: root.bar.foreground
+        fontFamily: root.bar.fontFamily
+        onClicked: if (root.service) root.service.setSleepOption("bluetooth", checked ? "keep" : "off")
+      }
+
+      Toggle {
+        width: parent.width
+        label: root.t("wifiOff")
+        description: root.t("wifiOffDesc")
+        checked: root.sleepOption("wifi") === "off"
+        foreground: root.bar.foreground
+        fontFamily: root.bar.fontFamily
+        onClicked: if (root.service) root.service.setSleepOption("wifi", checked ? "keep" : "off")
+      }
+
+      Text {
+        visible: root.service && root.service.sleepError !== ""
+        text: "⚠ " + root.t("sleepWatchErr")
+        color: Qt.darker(root.bar.foreground, 1.4)
+        font.family: root.bar.fontFamily
+        font.pixelSize: Style.font.caption
       }
     }
   }

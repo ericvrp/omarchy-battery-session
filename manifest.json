@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "hungmi.battery-session",
-  "name": "Battery Session",
-  "version": "0.2.0",
-  "author": "hungmi",
+  "id": "ericvrp.sleep-actions",
+  "name": "Sleep Actions",
+  "version": "0.3.0",
+  "author": "Eric van Riet Paap (fork of hungmi.battery-session by hungmi)",
   "license": "MIT",
-  "description": "How long this discharge has actually been in use — awake time only, suspend excluded, lock screen included.",
+  "description": "Battery session measurement plus controls for what to shut down before suspend (Bluetooth, Wi-Fi), with the active settings recorded in every sample.",
   "kinds": [
     "service",
     "bar-widget"
@@ -16,8 +16,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Battery Session",
-    "description": "Awake time since unplugging, with per-session history.",
+    "displayName": "Sleep Actions",
+    "description": "Battery session stats and sleep-time radio controls.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right",

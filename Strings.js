@@ -11,6 +11,11 @@ var TABLE = {
     nowW: "now", remaining: "Time left", curAvg: "session avg", histAvg: "all-time avg",
     tipAwake: "in use", tipRemainCur: "left (session avg)", tipRemainHist: "left (all-time avg)",
     onAc: "Plugged in", rightClick: "Right-click to change", histUse: "awake", histSlept: "suspended",
+    sleepSection: "When sleeping", btOff: "Turn off Bluetooth",
+    btOffDesc: "Blocks the Bluetooth radio before suspend and restores it on wake",
+    wifiOff: "Turn off Wi-Fi",
+    wifiOffDesc: "Blocks the Wi-Fi radio before suspend and restores it on wake",
+    sleepWatchErr: "sleep action watcher is not running",
     err: "Sampler", errNoBattery: "no battery found", errClock: "system clock not synced yet", errDataDir: "data directory failed ownership check", errKilled: "timed out and was killed"
   },
   "zh-Hant": {
@@ -21,6 +26,11 @@ var TABLE = {
     nowW: "現在", remaining: "還能用多久", curAvg: "本次平均", histAvg: "歷史平均",
     tipAwake: "實際使用", tipRemainCur: "還能用多久（本次平均）", tipRemainHist: "還能用多久（歷史平均）",
     onAc: "接電中", rightClick: "右鍵切換顯示", histUse: "實際", histSlept: "睡",
+    sleepSection: "睡前動作", btOff: "關閉藍牙",
+    btOffDesc: "睡前封鎖藍牙電台，醒來後解除封鎖",
+    wifiOff: "關閉 Wi-Fi",
+    wifiOffDesc: "睡前封鎖 Wi-Fi 電台，醒來後解除封鎖",
+    sleepWatchErr: "睡前動作監控未執行",
     err: "取樣器", errNoBattery: "沒有電池", errClock: "系統時鐘還沒同步", errDataDir: "資料目錄擁有者檢查失敗", errKilled: "逾時被強制結束"
   },
   "zh-Hans": {
@@ -31,6 +41,11 @@ var TABLE = {
     nowW: "现在", remaining: "还能用多久", curAvg: "本次平均", histAvg: "历史平均",
     tipAwake: "实际使用", tipRemainCur: "还能用多久（本次平均）", tipRemainHist: "还能用多久（历史平均）",
     onAc: "接电中", rightClick: "右键切换显示", histUse: "实际", histSlept: "睡",
+    sleepSection: "睡前动作", btOff: "关闭蓝牙",
+    btOffDesc: "睡前封锁蓝牙电台，醒来后解除封锁",
+    wifiOff: "关闭 Wi-Fi",
+    wifiOffDesc: "睡前封锁 Wi-Fi 电台，醒来后解除封锁",
+    sleepWatchErr: "睡前动作监控未运行",
     err: "采样器", errNoBattery: "没有电池", errClock: "系统时钟尚未同步", errDataDir: "数据目录所有者检查失败", errKilled: "超时被强制结束"
   }
 }

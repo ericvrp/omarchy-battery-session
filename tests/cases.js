@@ -47,5 +47,20 @@ for (const [name, rs, want] of cases) {
   console.log(`${ok ? "ok  " : "FAIL"} ${name}`)
   if (!ok) console.log(`       want ${want.join(" | ")}\n       got  ${got.join(" | ")}`)
 }
-console.log(fail ? `\n${fail} failed` : `\n${cases.length} passed`)
+
+// parseRow: the optional ninth column is kept; pre-fork rows still parse.
+const parseCases = [
+  ["eight columns (pre-fork row)", "1788400000\t1000\tb\t50\tDischarging\t0\t20.0\t-5.0", ""],
+  ["nine columns with settings", "1788400000\t1000\tb\t50\tDischarging\t0\t20.0\t-5.0\tbt=off;wifi=keep", "bt=off;wifi=keep"],
+]
+for (const [name, line, want] of parseCases) {
+  const r = ctx.parseRow(line)
+  const got = r ? r.settings : null
+  const ok = got === want
+  if (!ok) fail++
+  console.log(`${ok ? "ok  " : "FAIL"} parseRow ${name}`)
+  if (!ok) console.log(`       want ${JSON.stringify(want)} got ${JSON.stringify(got)}`)
+}
+const checks = cases.length + parseCases.length
+console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)
