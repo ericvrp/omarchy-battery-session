@@ -44,7 +44,7 @@ Silicon / `s2idle` case is why this fork exists.
 ## Install this fork
 
 ```bash
-git clone <your-fork-url> ~/.config/omarchy/plugins/ericvrp.sleep-actions
+git clone https://github.com/ericvrp/omarchy-battery-session.git ~/.config/omarchy/plugins/ericvrp.sleep-actions
 omarchy-shell shell rescanPlugins
 omarchy plugin enable ericvrp.sleep-actions --section right
 ```
