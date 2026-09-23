@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ericvrp.sleep-actions",
   "name": "Sleep Actions",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "Eric van Riet Paap (fork of hungmi.battery-session by hungmi)",
   "license": "MIT",
   "description": "Battery session measurement plus controls for what to shut down before suspend (Bluetooth, Wi-Fi), with the active settings recorded in every sample.",

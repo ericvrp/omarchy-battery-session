@@ -5,16 +5,19 @@ that keeps the battery-session measurement and adds a dropdown of actions to
 run when the machine goes to sleep, plus logging that ties those settings to
 the measurements.
 
-On the bar: a battery glyph and one number (time left or time in use).
-Clicking it opens the panel with the discharge details, the sleep action
-toggles, and the history. Right-click still cycles the bar label.
+On the bar: a battery glyph, the current charge in percent, and one number
+(time left or time in use). Clicking it opens the sleep panel with the action
+toggles and the measured sleep periods. Right-click still cycles the bar
+label.
 
 ## Sleep actions
 
-| Toggle | What it does |
+| Option | What it does |
 |---|---|
-| Turn off Bluetooth | Blocks the Bluetooth radio before suspend, unblocks it on wake |
-| Turn off Wi-Fi | Blocks the Wi-Fi radio before suspend, unblocks it on wake |
+| Nothing turned off | Default: radios behave exactly as they do today |
+| Bluetooth off | Blocks the Bluetooth radio before suspend, unblocks it on wake |
+| Wi-Fi off | Blocks the Wi-Fi radio before suspend, unblocks it on wake |
+| Bluetooth + Wi-Fi off | Both of the above |
 
 Both default to off (radios kept on). The point is to test whether a radio is
 what keeps the machine drawing power while suspended: flip one on, leave the
@@ -61,36 +64,43 @@ and to confirm the radio actually went off.
 
 ## What it shows
 
-On the bar: a battery glyph and one number. Right-click to cycle between:
-
-| Mode | Meaning |
-|---|---|
-| Time left (all-time avg) | Remaining charge ÷ your average awake power draw across all recorded discharges. Default. |
-| Time left (session avg) | Same, using only this discharge's average. |
-| Time in use | Awake time since unplugging. |
-
-Click to open the details:
+On the bar: a battery glyph, the current charge (percent) and one number.
+Right-click cycles the number between time left (all-time average), time left
+(this discharge's average) and time in use. Clicking opens the panel:
 
 ```
-Battery life
-  Unplugged at           09-03 16:11  100%
-  Now                    09-03 23:46   71%
-  Time since unplugged   7h 35m
-  Suspended / off        5h 27m
-  Time in use            2h 08m
-  Discharging            now 5.0W · session avg 4.7W
-  Time left              6h 04m (session avg 4.7W)
-                         4h 10m (all-time avg 6.9W)
-
 When sleeping
-  Turn off Bluetooth     [ ]
-  Turn off Wi-Fi         [ ]
+  [ Nothing turned off ▾ ]
+
+Sleep periods
+  09-11 11:09 → 11:43   0h 33m
+    2.1 W · 1.2 Wh · settings not recorded
+  09-10 00:19 → 02:50   2h 30m
+    2.4 W · 6.0 Wh · settings not recorded
+  average 2.7 W  (17)
 ```
 
-Averages use awake power only. Suspend still draws roughly 1 W on many
-laptops; that energy is reported separately as "Used while asleep" so it does
-not inflate your estimate.
+The "When sleeping" dropdown picks what is turned off before suspend, on one
+line: nothing, Bluetooth, Wi-Fi, or both. It uses `rfkill`, so the radio is
+blocked before the machine sleeps and unblocked again on wake (see below).
 
+Each sleep period is measured between the samples around it: duration from the
+awake tick counter (jiffies only advance while awake), energy from the battery
+gauge, and average power derived from those. The energy is taken from the
+first settled sample after wake, so the fuel gauge's post-resume lag does not
+understate a sleep.
+
+Power (W) and energy (Wh) are absolute, so they can be compared across
+machines and battery sizes; a percentage-per-hour figure is deliberately not
+shown because it would depend on the battery capacity. The recorded sleep
+action settings are shown per period, so a `Bluetooth off` night can be
+compared with a default one. Rows from before the fork say
+`settings not recorded`.
+
+The average at the bottom covers every measured sleep period in the retained
+history (the last 12 monthly files), not only the six listed. Time-left
+estimates and the bar label still use awake power only; suspend energy is
+never mixed into them.
 Languages: English, Traditional Chinese and Simplified Chinese, following the
 system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simplified).
 

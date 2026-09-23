@@ -61,6 +61,37 @@ for (const [name, line, want] of parseCases) {
   console.log(`${ok ? "ok  " : "FAIL"} parseRow ${name}`)
   if (!ok) console.log(`       want ${JSON.stringify(want)} got ${JSON.stringify(got)}`)
 }
-const checks = cases.length + parseCases.length
+
+// sleepPeriods: only on-battery windows of at least five minutes with an
+// energy drop, carrying the settings column of the pre-sleep sample.
+function check(ok, name, extra) {
+  if (!ok) fail++
+  console.log(`${ok ? "ok  " : "FAIL"} ${name}`)
+  if (!ok && extra) console.log(`       ${extra}`)
+}
+const sleepRows = rows([[0, "0", 20.5], [1, "0", 20.0], [61, "0", 18.0, 1], [62, "0", 18.0]])
+sleepRows[1].settings = "bt=off;wifi=keep"
+sleepRows[2].pw = 0            // no awake energy between wake-up and the settled sample
+sleepRows[3].pw = 0
+const sp = ctx.sleepPeriods(sleepRows, HZ)
+check(sp.length === 1 && Math.abs(sp[0].avgW - 2.0) < 0.001
+      && sp[0].settings.bluetooth === "off" && sp[0].settings.wifi === "keep",
+      "sleepPeriods: 60 min, 2 Wh, bluetooth off recorded", JSON.stringify(sp))
+// Gauge settling: the first post-wake sample understates the drain; a normal
+// sample one minute later is used instead, minus the energy spent awake.
+const settleRows = rows([[0, "0", 20.5], [1, "0", 20.0], [61, "0", 19.4, 1], [62, "0", 18.9]])
+const settled = ctx.sleepPeriods(settleRows, HZ)
+check(settled.length === 1 && Math.abs(settled[0].avgW - 1.0167) < 0.01,
+      "sleepPeriods: settled sample corrects the post-wake gauge lag",
+      settled.length ? String(settled[0].avgW) : "no period")
+const spNoSettings = ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.0], [61, "0", 18.0, 1]]), HZ)
+check(spNoSettings.length === 1 && spNoSettings[0].settings.bluetooth === null,
+      "sleepPeriods: missing settings column reads as unrecorded")
+check(ctx.sleepPeriods(rows([[0, "1", 20.5], [1, "1", 20.0], [61, "1", 18.0, 1]]), HZ).length === 0,
+      "sleepPeriods: on-charger window ignored")
+check(ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.4], [3, "0", 20.3, 1]]), HZ).length === 0,
+      "sleepPeriods: shorter than the minimum ignored")
+
+const checks = cases.length + parseCases.length + 5
 console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)

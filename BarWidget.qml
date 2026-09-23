@@ -34,6 +34,31 @@ BarWidget {
     return root.service && root.service.sleepOptions ? root.service.sleepOptions[key] : "keep"
   }
 
+  // The one-line dropdown: keep / Bluetooth off / Wi-Fi off / both off.
+  function sleepOffValue() {
+    var bt = root.sleepOption("bluetooth") === "off"
+    var wifi = root.sleepOption("wifi") === "off"
+    return bt && wifi ? "both" : bt ? "bt" : wifi ? "wifi" : "keep"
+  }
+  function setSleepOff(value) {
+    if (!root.service) return
+    if (value === "keep") { root.service.setSleepOption("bluetooth", "keep"); root.service.setSleepOption("wifi", "keep") }
+    else if (value === "bt") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "keep") }
+    else if (value === "wifi") { root.service.setSleepOption("bluetooth", "keep"); root.service.setSleepOption("wifi", "off") }
+    else if (value === "both") { root.service.setSleepOption("bluetooth", "off"); root.service.setSleepOption("wifi", "off") }
+  }
+
+  // "Bluetooth off · Wi-Fi off" for a sleep period, from its recorded settings.
+  function offLabel(period) {
+    if (!period || !period.settings) return root.t("sleepSettingsUnknown")
+    if (period.settings.bluetooth === null && period.settings.wifi === null)
+      return root.t("sleepSettingsUnknown")
+    var parts = []
+    if (period.settings.bluetooth === "off") parts.push(root.t("btShort"))
+    if (period.settings.wifi === "off") parts.push(root.t("wifiShort"))
+    return parts.length ? parts.join(" · ") : root.t("sleepNothingOff")
+  }
+
   readonly property string mode: setting("barLabel", "remainHist")
   readonly property var labelSecs: !live ? null
     : mode === "awake" ? cur.awakeSecs
@@ -71,7 +96,17 @@ BarWidget {
       id: glyph
       anchors.verticalCenter: parent.verticalCenter
       text: "󱧥"
-      color: root.live ? root.bar.barForeground : Qt.darker(root.bar.barForeground, 1.5)
+      color: root.bar.barForeground
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.body
+    }
+
+    Text {
+      id: pctText
+      anchors.verticalCenter: parent.verticalCenter
+      visible: root.summary && root.summary.lastPct !== null
+      text: root.summary && root.summary.lastPct !== null ? root.summary.lastPct + "%" : ""
+      color: root.bar.barForeground
       font.family: root.bar.fontFamily
       font.pixelSize: Style.font.body
     }
@@ -106,67 +141,13 @@ BarWidget {
     bar: root.bar
     owner: root
     open: root.popupOpen
-    contentWidth: popup.fittedContentWidth(Style.space(root.zh ? 360 : 400))
+    contentWidth: popup.fittedContentWidth(Style.space(root.zh ? 330 : 370))
     contentHeight: popup.fittedContentHeight(column.implicitHeight)
-
-    component Line: Row {
-      property string k: ""
-      property string v: ""
-      width: parent.width
-      Text {
-        text: k
-        width: root.zh ? Style.space(120) : Style.space(180)
-        color: Qt.darker(root.bar.foreground, 1.4)
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-      }
-      Text {
-        text: v
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-      }
-    }
 
     Column {
       id: column
       anchors.fill: parent
       spacing: Style.space(6)
-
-      Text {
-        text: !root.summary || root.summary.state === "empty" ? root.t("empty")
-            : root.summary.state === "calibrating" ? root.t("calibrating")
-            : root.live ? root.t("current") : root.t("last")
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.subtitle
-        font.bold: true
-      }
-
-      Column {
-        width: parent.width
-        spacing: Style.space(3)
-        visible: root.cur !== null
-        Line { k: root.t("unplugged"); v: root.cur ? Model.clock(root.cur.startWall) + "  " + root.cur.startPct + "%" : "" }
-        Line { k: root.t("now"); visible: root.live
-               v: root.cur ? Model.clock(root.cur.endWall) + "  " + root.cur.endPct + "%" : "" }
-        Line { k: root.t("elapsed"); v: root.cur ? Model.hm(root.cur.wallSecs) : "" }
-        Line { k: root.t("slept"); v: root.cur ? Model.hm(root.cur.sleptSecs) : "" }
-        Line { k: root.t("sleptWh"); visible: root.cur && root.cur.sleptWh !== null && root.cur.sleptWh >= 0.5
-               v: root.cur && root.cur.sleptWh !== null ? root.cur.sleptWh.toFixed(1) + " Wh" : "" }
-        Line { k: root.t("awake"); v: root.cur ? Model.hm(root.cur.awakeSecs) : "" }
-        Line { k: root.t("power")
-               visible: root.live && root.cur && (root.cur.nowW || root.cur.avgW)
-               v: root.cur ? [root.cur.nowW ? root.t("nowW") + " " + root.fmtW(root.cur.nowW) : "",
-                              root.cur.avgW ? root.t("curAvg") + " " + root.fmtW(root.cur.avgW) : ""].filter(Boolean).join(" · ") : "" }
-        Line { k: root.t("remaining")
-               visible: root.live && root.cur && root.cur.remainCurSecs
-               v: root.cur && root.cur.remainCurSecs ? Model.hm(root.cur.remainCurSecs) + " (" + root.t("curAvg") + " " + root.fmtW(root.cur.avgW) + ")" : "" }
-        Line { k: ""
-               visible: root.live && root.cur && root.cur.remainHistSecs
-               v: root.cur && root.cur.remainHistSecs && root.summary.histAvgW
-                  ? Model.hm(root.cur.remainHistSecs) + " (" + root.t("histAvg") + " " + root.fmtW(root.summary.histAvgW) + ")" : "" }
-      }
 
       Text {
         visible: root.service && root.service.lastError !== ""
@@ -176,65 +157,88 @@ BarWidget {
         font.pixelSize: Style.font.caption
       }
 
-      PanelSeparator {
-        visible: root.summary && root.summary.history.length > 0
-        foreground: root.bar.foreground
-      }
-
-      Column {
+      Dropdown {
         width: parent.width
-        spacing: Style.space(2)
-        visible: root.summary && root.summary.history.length > 0
-
-        Repeater {
-          model: root.summary ? root.summary.history : []
-          Text {
-            required property var modelData
-            width: parent.width
-            text: Model.clock(modelData.startWall) + "  " + modelData.startPct + "→" + modelData.endPct + "%"
-                  + "  " + root.t("histUse") + " " + Model.hm(modelData.awakeSecs)
-                  + (modelData.sleptSecs >= 60 ? "  " + root.t("histSlept") + " " + Model.hm(modelData.sleptSecs) : "")
-                  + (modelData.avgW !== null ? "  " + modelData.avgW.toFixed(1) + "W" : "")
-            color: Qt.darker(root.bar.foreground, 1.3)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.caption
-            elide: Text.ElideRight
-          }
-        }
-      }
-
-      PanelSeparator { foreground: root.bar.foreground }
-
-      PanelSectionHeader {
-        text: root.t("sleepSection")
+        label: root.t("sleepSection")
+        value: root.sleepOffValue()
+        options: [
+          { value: "keep", label: root.t("sleepOffNone") },
+          { value: "bt", label: root.t("btShort") },
+          { value: "wifi", label: root.t("wifiShort") },
+          { value: "both", label: root.t("sleepOffBoth") }
+        ]
         foreground: root.bar.foreground
         fontFamily: root.bar.fontFamily
-      }
-
-      Toggle {
-        width: parent.width
-        label: root.t("btOff")
-        description: root.t("btOffDesc")
-        checked: root.sleepOption("bluetooth") === "off"
-        foreground: root.bar.foreground
-        fontFamily: root.bar.fontFamily
-        onClicked: if (root.service) root.service.setSleepOption("bluetooth", checked ? "keep" : "off")
-      }
-
-      Toggle {
-        width: parent.width
-        label: root.t("wifiOff")
-        description: root.t("wifiOffDesc")
-        checked: root.sleepOption("wifi") === "off"
-        foreground: root.bar.foreground
-        fontFamily: root.bar.fontFamily
-        onClicked: if (root.service) root.service.setSleepOption("wifi", checked ? "keep" : "off")
+        onChanged: function(value) { root.setSleepOff(value) }
       }
 
       Text {
         visible: root.service && root.service.sleepError !== ""
         text: "⚠ " + root.t("sleepWatchErr")
         color: Qt.darker(root.bar.foreground, 1.4)
+        font.family: root.bar.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
+
+      PanelSectionHeader {
+        text: root.t("sleepPeriods")
+        foreground: root.bar.foreground
+        fontFamily: root.bar.fontFamily
+      }
+
+      Text {
+        visible: !root.summary || root.summary.sleeps.length === 0
+        text: root.t("sleepNoData")
+        color: Qt.darker(root.bar.foreground, 1.4)
+        font.family: root.bar.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+
+      Column {
+        width: parent.width
+        spacing: Style.space(5)
+        visible: root.summary && root.summary.sleeps.length > 0
+
+        Repeater {
+          model: root.summary ? root.summary.sleeps : []
+
+          Column {
+            required property var modelData
+            width: parent.width
+            spacing: Style.space(1)
+
+            Text {
+              width: parent.width
+              text: Model.clockRange(modelData.startWall, modelData.endWall)
+                    + "   " + Model.hm(modelData.sleepSecs)
+              color: root.bar.foreground
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            Text {
+              width: parent.width
+              text: root.fmtW(modelData.avgW)
+                    + " · " + modelData.usedWh.toFixed(1) + " Wh"
+                    + " · " + root.offLabel(modelData)
+              color: Qt.darker(root.bar.foreground, 1.4)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+            }
+          }
+        }
+      }
+
+      Text {
+        visible: root.summary && root.summary.sleepAvgW !== null && root.summary.sleepCount > 0
+        text: root.summary && root.summary.sleepAvgW !== null
+          ? root.t("sleepAverage") + " " + root.fmtW(root.summary.sleepAvgW)
+            + "  (" + root.summary.sleepCount + ")"
+          : ""
+        color: Qt.darker(root.bar.foreground, 1.5)
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.caption
       }

@@ -14,6 +14,8 @@ var SANE_WALL = 1500000000      // 2017. Rows written before NTP sync at boot ar
 var WH_JITTER = 1.0             // Energy rising by more than this while discharging = charged in between. The gauge itself drifts ±0.6
 var SLEEP_GAP = 120             // Wall delta exceeding jiffies delta by more than this many seconds = slept in between
 var MIN_HIST_AWAKE = 600        // All-time average only counts sessions awake for ≥10 minutes
+var MIN_SLEEP = 600             // Shorter gaps are noise (gauge settling, quick lid blips), not a measurable sleep period
+var MAX_SLEEP_LIST = 6          // Most recent sleep periods shown in the popup
 var HZ_CANDIDATES = [100, 250, 300, 1000]
 
 function parseRow(line) {
@@ -74,6 +76,73 @@ function detectHz(rows) {
 
 function onBattery(r) {
   return (r.ac === "0" || r.ac === "1") ? r.ac === "0" : r.state === "Discharging"
+}
+
+// --- sleep periods ---------------------------------------------------------
+// The settings column written by sample.sh: "bt=off;wifi=keep". Values not
+// recorded (rows from before the fork, or a foreign writer) stay null.
+function parseSettings(raw) {
+  var out = { bluetooth: null, wifi: null }
+  var parts = String(raw || "").split(";")
+  for (var i = 0; i < parts.length; i++) {
+    var kv = parts[i].split("=")
+    if (kv.length !== 2) continue
+    if (kv[0] === "bt" && (kv[1] === "keep" || kv[1] === "off")) out.bluetooth = kv[1]
+    if (kv[0] === "wifi" && (kv[1] === "keep" || kv[1] === "off")) out.wifi = kv[1]
+  }
+  return out
+}
+
+// One entry per suspend: adjacent samples in the same boot where the wall clock
+// moved much further than the awake tick counter, on battery the whole time,
+// at least MIN_SLEEP long and with a measurable energy drop. That is the set
+// of windows whose average power can be compared across settings, which is the
+// whole point of the dropdown.
+function sleepPeriods(rows, hz) {
+  var out = []
+  if (!hz) return out
+  for (var i = 1; i < rows.length; i++) {
+    var a = rows[i - 1], b = rows[i]
+    if (a.boot !== b.boot) continue
+    var dw = b.wall - a.wall
+    if (dw <= 0) continue
+    var d = (b.jiffies - a.jiffies) / hz
+    var awake = d > 0 ? Math.min(d, dw) : 0
+    var sleep = dw - awake
+    if (sleep < MIN_SLEEP) continue
+    if (!onBattery(a) || !onBattery(b)) continue
+    if (a.wh === null || b.wh === null) continue
+
+    // The fuel gauge relaxes for about a minute after resume; its first reading
+    // understates what the sleep used. When a normal sample follows the wake-up
+    // sample, measure to that one instead and subtract the energy spent awake
+    // in between (one minute at the sampled power).
+    var end = b, adjust = 0
+    var nxt = rows[i + 1]
+    if (nxt && nxt.boot === b.boot && nxt.wh !== null && b.pw !== null && nxt.pw !== null) {
+      var gap = nxt.wall - b.wall
+      var gapAwake = (nxt.jiffies - b.jiffies) / hz
+      if (gap > 0 && gap - gapAwake < SLEEP_GAP) {
+        end = nxt
+        adjust = Math.abs((b.pw + nxt.pw) / 2) * gap / 3600
+      }
+    }
+    var usedWh = a.wh - end.wh - adjust
+    if (usedWh <= 0) continue
+    var startPct = parseInt(a.pct, 10), endPct = parseInt(b.pct, 10)
+    var pctDrop = (!isNaN(startPct) && !isNaN(endPct) && startPct >= endPct) ? startPct - endPct : null
+    var raw = a.settings || b.settings || ""     // the sample before suspend is the policy that was active
+    out.push({
+      startWall: a.wall, endWall: b.wall,
+      sleepSecs: sleep, usedWh: usedWh,
+      avgW: usedWh * 3600 / sleep,
+      pctDrop: pctDrop,
+      pctPerHour: pctDrop !== null ? pctDrop * 3600 / sleep : null,
+      settingsRaw: raw,
+      settings: parseSettings(raw)
+    })
+  }
+  return out
 }
 
 // Split rows into discharge sessions. A session ends when ac flips back to 1.
@@ -163,7 +232,9 @@ function summarize(rows, now) {
   var last = rows.length ? rows[rows.length - 1] : null
   var live = last ? onBattery(last) : false
   var out = { state: rows.length ? (hz ? "ok" : "calibrating") : "empty",
-              hz: hz, live: live, current: null, history: [], lastWall: last ? last.wall : 0 }
+              hz: hz, live: live, current: null, history: [], lastWall: last ? last.wall : 0,
+              lastPct: last && !isNaN(parseInt(last.pct, 10)) ? parseInt(last.pct, 10) : null,
+              sleeps: [], sleepCount: 0, sleepAvgW: null }
   if (!hz || !segs.length) return out
   var all = []
   for (var i = 0; i < segs.length; i++)
@@ -191,6 +262,15 @@ function summarize(rows, now) {
     c.remainCurSecs = c.avgW ? lastWh * 3600 / c.avgW : null
     c.remainHistSecs = out.histAvgW ? lastWh * 3600 / out.histAvgW : null
   }
+
+  // Sleep periods, most recent first, for the popup's sleep section. The
+  // average is over every qualifying period, not only the listed ones.
+  var periods = sleepPeriods(rows, hz)
+  var totWh = 0, totSecs = 0
+  for (var p = 0; p < periods.length; p++) { totWh += periods[p].usedWh; totSecs += periods[p].sleepSecs }
+  out.sleepCount = periods.length
+  out.sleepAvgW = totSecs > 0 ? totWh * 3600 / totSecs : null
+  out.sleeps = periods.slice(Math.max(0, periods.length - MAX_SLEEP_LIST)).reverse()
   return out
 }
 
@@ -205,4 +285,13 @@ function pad2(n) { return (n < 10 ? "0" : "") + n }
 function clock(wall) {
   var d = new Date(wall * 1000)
   return pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes())
+}
+
+// "09-11 11:09 → 11:43" when both ends fall on the same day, full clock otherwise.
+function clockRange(start, end) {
+  var a = new Date(start * 1000), b = new Date(end * 1000)
+  var sameDay = a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  return sameDay
+    ? clock(start) + " → " + pad2(b.getHours()) + ":" + pad2(b.getMinutes())
+    : clock(start) + " → " + clock(end)
 }

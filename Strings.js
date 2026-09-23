@@ -15,7 +15,13 @@ var TABLE = {
     btOffDesc: "Blocks the Bluetooth radio before suspend and restores it on wake",
     wifiOff: "Turn off Wi-Fi",
     wifiOffDesc: "Blocks the Wi-Fi radio before suspend and restores it on wake",
+    btOption: "Bluetooth at sleep", wifiOption: "Wi-Fi at sleep",
+    keepOn: "Keep on", turnOff: "Turn off",
+    sleepOffNone: "Nothing turned off", sleepOffBoth: "Bluetooth + Wi-Fi off",
     sleepWatchErr: "sleep action watcher is not running",
+    sleepPeriods: "Sleep periods", sleepNoData: "No sleep recorded yet",
+    sleepAverage: "average", sleepSettingsUnknown: "settings not recorded",
+    sleepNothingOff: "nothing turned off", btShort: "Bluetooth off", wifiShort: "Wi-Fi off",
     err: "Sampler", errNoBattery: "no battery found", errClock: "system clock not synced yet", errDataDir: "data directory failed ownership check", errKilled: "timed out and was killed"
   },
   "zh-Hant": {
@@ -30,7 +36,13 @@ var TABLE = {
     btOffDesc: "睡前封鎖藍牙電台，醒來後解除封鎖",
     wifiOff: "關閉 Wi-Fi",
     wifiOffDesc: "睡前封鎖 Wi-Fi 電台，醒來後解除封鎖",
+    btOption: "睡眠時藍牙", wifiOption: "睡眠時 Wi-Fi",
+    keepOn: "保持開啟", turnOff: "關閉",
+    sleepOffNone: "不關閉任何項目", sleepOffBoth: "藍牙與 Wi-Fi 關閉",
     sleepWatchErr: "睡前動作監控未執行",
+    sleepPeriods: "睡眠期間", sleepNoData: "還沒有睡眠紀錄",
+    sleepAverage: "平均", sleepSettingsUnknown: "沒有設定紀錄",
+    sleepNothingOff: "沒有關閉項目", btShort: "藍牙關閉", wifiShort: "Wi-Fi 關閉",
     err: "取樣器", errNoBattery: "沒有電池", errClock: "系統時鐘還沒同步", errDataDir: "資料目錄擁有者檢查失敗", errKilled: "逾時被強制結束"
   },
   "zh-Hans": {
@@ -45,7 +57,13 @@ var TABLE = {
     btOffDesc: "睡前封锁蓝牙电台，醒来后解除封锁",
     wifiOff: "关闭 Wi-Fi",
     wifiOffDesc: "睡前封锁 Wi-Fi 电台，醒来后解除封锁",
+    btOption: "睡眠时蓝牙", wifiOption: "睡眠时 Wi-Fi",
+    keepOn: "保持开启", turnOff: "关闭",
+    sleepOffNone: "不关闭任何项目", sleepOffBoth: "蓝牙与 Wi-Fi 关闭",
     sleepWatchErr: "睡前动作监控未运行",
+    sleepPeriods: "睡眠期间", sleepNoData: "还没有睡眠记录",
+    sleepAverage: "平均", sleepSettingsUnknown: "没有设置记录",
+    sleepNothingOff: "没有关闭项目", btShort: "蓝牙关闭", wifiShort: "Wi-Fi 关闭",
     err: "采样器", errNoBattery: "没有电池", errClock: "系统时钟尚未同步", errDataDir: "数据目录所有者检查失败", errKilled: "超时被强制结束"
   }
 }

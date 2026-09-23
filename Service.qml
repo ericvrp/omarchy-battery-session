@@ -150,6 +150,15 @@ Item {
     onTriggered: root.sample()
   }
 
+  // Settings can change from outside the UI (CLI, or a leftover restore after
+  // sleep); re-read the file so the dropdown never shows a stale value.
+  Timer {
+    interval: 30000
+    running: root.loaded
+    repeat: true
+    onTriggered: root.refreshSleepOptions()
+  }
+
   Process {
     id: sampleProc
     running: false
