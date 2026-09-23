@@ -72,7 +72,7 @@ Right-click cycles the number between time left (all-time average), time left
 Turn off while sleeping
   Bluetooth [ ]   Wi-Fi [ ]
 
-Sleep periods
+Sleep periods                 Folder  Clear
   Nothing turned off   2.8 W
     09-23 20:11 → 20:43   2.1 W · 1.2 Wh
   Bluetooth off   1.8 W
@@ -86,6 +86,10 @@ line each: when it started and ended, the average power and the energy used.
 Only measured on-battery sleeps appear: sleeps on the charger have no
 meaningful drain figure, and sleeps too short for the battery gauge to resolve
 are omitted rather than shown without numbers.
+
+`Folder` opens the database directory in the file manager; `Clear` (two-step:
+it first asks "Sure?") deletes the recorded samples, keeping settings and the
+event log.
 
 Each sleep period is measured between the samples around it: duration from the
 awake tick counter (jiffies only advance while awake), energy from the battery
@@ -108,13 +112,38 @@ system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simpl
 
 ## Data files
 
-- `~/.local/share/sleep-actions/YYYY-MM.tsv` — one file per month, last 12
-  kept. This fork's own database; the original plugin's
-  `~/.local/share/battery-session` directory is not read or written. It starts
-  empty: statistics recorded before the settings column existed are not
-  imported, so every listed sleep belongs to one of the four settings groups.
-- `~/.local/share/sleep-actions/events.tsv` — settings changes and sleep
-  actions, appended as above.
+The `Folder` link in the panel opens `~/.local/share/sleep-actions/`, which
+contains two TSV files:
+
+- `YYYY-MM.tsv` (one per month, last 12 kept) — **the sample database**. One
+  tab-separated row per minute, written by `sample.sh`:
+
+  | column | meaning |
+  |---|---|
+  | `wall` | Unix time in seconds |
+  | `jiffies` | scheduler tick count; advances only while awake |
+  | `boot` | first 8 chars of the boot id (rows never mix boots) |
+  | `pct` | battery charge, integer percent |
+  | `state` | `Charging` / `Discharging` / `Full` / … |
+  | `ac` | 1 = mains power, 0 = battery |
+  | `energy_wh` | remaining energy in Wh |
+  | `power_w` | instantaneous power in W (negative = discharging) |
+  | `settings` | `bt=off;wifi=keep` style policy in effect at that moment |
+
+  Everything in the panel is derived from these rows: awake time is the
+  jiffies difference, a sleep is a wall-time gap larger than the jiffies
+  difference, and the drain is the energy difference across it. The file
+  starts empty on a fresh install; rows recorded before the settings column
+  existed are not imported.
+
+- `events.tsv` — **the action log**. One row per event (`wall`, `event`,
+  `detail`): settings changes, the pre/post actions of each suspend, the
+  reconcile on start/stop, and clears. It is diagnostic only — the panel does
+  not read it — but it is the record of what was actually blocked and restored
+  during a given sleep.
+
+Other files:
+
 - `~/.config/omarchy/sleep-actions.conf` — the two settings.
 - `~/.local/state/omarchy/sleep-actions/applied` — what is currently blocked
   by the plugin, so it can be restored.

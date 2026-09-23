@@ -9,6 +9,7 @@
 #   set <key> <value>      validate, persist, and immediately restore a radio
 #                          that is switched back to keep while still blocked
 #   status                 print what this plugin has blocked right now
+#   path                   print the database directory (for the Folder link)
 #   clear                  delete the recorded sample history (stats only)
 #   apply-pre              run the configured pre-suspend actions
 #   apply-post             restore whatever apply-pre changed
@@ -276,6 +277,9 @@ case $mode in
     ;;
   status)
     do_status
+    ;;
+  path)
+    printf '%s\n' "$data"
     ;;
   clear)
     do_clear

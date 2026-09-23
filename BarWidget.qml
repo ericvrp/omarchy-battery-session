@@ -220,13 +220,34 @@ BarWidget {
 
       Row {
         width: parent.width
-        spacing: Style.space(6)
+        spacing: Style.space(10)
 
         PanelSectionHeader {
           text: root.t("sleepPeriods")
           foreground: root.bar.foreground
           fontFamily: root.bar.fontFamily
-          width: parent.width - clearItem.width - parent.spacing
+          width: parent.width - folderItem.width - clearItem.width - parent.spacing * 2
+        }
+
+        Item {
+          id: folderItem
+          width: folderText.implicitWidth
+          height: folderText.implicitHeight
+
+          Text {
+            id: folderText
+            anchors.fill: parent
+            text: root.t("folder")
+            color: Qt.darker(root.bar.foreground, 1.5)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (root.service) root.service.openDataDir()
+          }
         }
 
         Item {

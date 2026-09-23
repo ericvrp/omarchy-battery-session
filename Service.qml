@@ -52,6 +52,7 @@ Item {
   property var sleepOptions: ({ bluetooth: "keep", wifi: "keep" })
   property bool sleepWatchRunning: false
   property string sleepError: ""
+  property string dataDir: ""
   property var setQueue: []
   property bool destroying: false
   readonly property alias clearing: clearProc.running
@@ -113,6 +114,7 @@ Item {
   Watchdog { id: optionsWatch }
   Watchdog { id: setWatch }
   Watchdog { id: clearWatch }
+  Watchdog { id: pathWatch }
 
   // ---- startup: bounded history dump, then the first sample ----
   Process {
@@ -289,6 +291,32 @@ Item {
     }
   }
 
+  // ---- database folder (Folder link in the panel) ----
+  // One detached xdg-open; no watchdog, and the path comes from sleepctl.sh so
+  // there is only one place that knows where the data lives.
+  function openDataDir() {
+    if (root.dataDir === "") return
+    Quickshell.execDetached(["xdg-open", root.dataDir])
+  }
+
+  Process {
+    id: pathProc
+    running: true
+    command: root.scriptCommand("sleepctl.sh").concat(["path"])
+    clearEnvironment: true
+    environment: root.cleanEnvironment
+    stdinEnabled: false
+    stderr: null
+    stdout: StdioCollector {
+      onStreamFinished: {
+        var line = String(text).trim().split("\n")[0]
+        if (line.charAt(0) === "/") root.dataDir = line
+      }
+    }
+    onStarted: pathWatch.arm(pathProc, root.helperDeadlineSec)
+    onExited: function(code, status) { pathWatch.disarm() }
+  }
+
   // ---- sleep watcher ----
   Process {
     id: sleepWatchProc
@@ -322,6 +350,7 @@ Item {
     if (optionsProc.running) optionsProc.signal(15)
     if (setOptionProc.running) setOptionProc.signal(15)
     if (clearProc.running) clearProc.signal(15)
+    if (pathProc.running) pathProc.signal(15)
     if (sleepWatchProc.running) sleepWatchProc.signal(15)
     root.setQueue = []
   }
