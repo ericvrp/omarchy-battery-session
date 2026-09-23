@@ -69,7 +69,7 @@ Right-click cycles the number between time left (all-time average), time left
 (this discharge's average) and time in use. Clicking opens the panel:
 
 ```
-When sleeping
+Turn off while sleeping
   Bluetooth [ ]   Wi-Fi [ ]
 
 Sleep periods
