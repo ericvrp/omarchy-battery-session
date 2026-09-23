@@ -15,8 +15,9 @@ var WH_JITTER = 1.0             // Energy rising by more than this while dischar
 var SLEEP_GAP = 120             // Wall delta exceeding jiffies delta by more than this many seconds = slept in between
 var MIN_HIST_AWAKE = 600        // All-time average only counts sessions awake for ≥10 minutes
 var MIN_SLEEP = 5               // Seconds. Testing value; 300 is the sane default (shorter gaps are noise)
+var MIN_MEASURE = 300           // Shorter sleeps are still listed, but the gauge cannot resolve their energy
 var MAX_PER_GROUP = 4           // Most recent sleep periods listed under each settings group
-var GROUP_ORDER = ["none", "bt", "wifi", "both", "charger"]   // only groups with recorded settings are shown
+var GROUP_ORDER = ["none", "bt", "wifi", "both"]   // only measured on-battery periods are shown
 var HZ_CANDIDATES = [100, 250, 300, 1000]
 
 function parseRow(line) {
@@ -53,26 +54,26 @@ function appendRow(rows, r) {
   return rows.concat([r])
 }
 
-// HZ = jiffies delta / seconds delta, median over adjacent pairs about a minute
-// apart, snapped to a common kernel value. Pairs spanning a suspend have a huge
-// wall delta and are dropped by dw <= 130; anything that slips through is
-// absorbed by the median.
+// HZ = jiffies delta / seconds delta. Only pairs one ordinary sampling
+// interval apart (about a minute) can reveal the tick rate: a pair that spans
+// a suspend advances jiffies slower, so it must not be used. The fastest rate
+// seen is the true one; rates too far from every known kernel value mean we
+// cannot trust the data yet (return 0 = calibrating).
 function detectHz(rows) {
-  var rates = []
+  var best = 0
   for (var i = 1; i < rows.length; i++) {
     var a = rows[i - 1], b = rows[i]
     if (a.boot !== b.boot) continue
     var dw = b.wall - a.wall
-    if (dw < 30 || dw > 130) continue
-    rates.push((b.jiffies - a.jiffies) / dw)
+    if (dw < 40 || dw > 90) continue
+    var rate = (b.jiffies - a.jiffies) / dw
+    if (rate > best) best = rate
   }
-  if (!rates.length) return 0
-  rates.sort(function(x, y) { return x - y })
-  var med = rates[Math.floor(rates.length / 2)]
-  var best = HZ_CANDIDATES[0]
+  if (!best) return 0
+  var snap = HZ_CANDIDATES[0]
   for (var k = 1; k < HZ_CANDIDATES.length; k++)
-    if (Math.abs(HZ_CANDIDATES[k] - med) < Math.abs(best - med)) best = HZ_CANDIDATES[k]
-  return best
+    if (Math.abs(HZ_CANDIDATES[k] - best) < Math.abs(snap - best)) snap = HZ_CANDIDATES[k]
+  return Math.abs(snap - best) / snap > 0.15 ? 0 : snap
 }
 
 function onBattery(r) {
@@ -135,7 +136,7 @@ function sleepPeriods(rows, hz) {
     var raw = a.settings || b.settings || ""     // the sample before suspend is the policy that was active
     var charger = !(onBattery(a) && onBattery(b))
     var usedWh = null
-    if (!charger && a.wh !== null && b.wh !== null) {
+    if (!charger && sleep >= MIN_MEASURE && a.wh !== null && b.wh !== null) {
       // The fuel gauge relaxes for about a minute after resume; its first
       // reading understates what the sleep used. When a normal sample follows
       // the wake-up sample, measure to that one instead and subtract the energy
@@ -291,9 +292,10 @@ function summarize(rows, now) {
     c.remainHistSecs = out.histAvgW ? lastWh * 3600 / out.histAvgW : null
   }
 
-  // Sleep periods grouped by what was turned off, each group carrying its own
-  // average over the periods that have a power figure. Up to MAX_PER_GROUP of
-  // the most recent periods are listed per group.
+  // Sleep periods grouped by what was turned off. Only on-battery periods with
+  // a usable energy reading are listed: charger sleeps have no meaningful drain
+  // figure, and short sleeps the gauge cannot resolve are omitted as well. Each
+  // group carries its own average over every measured period in history.
   var periods = sleepPeriods(rows, hz)
   out.sleepCount = periods.length
   out.sleepGroups = []
@@ -301,17 +303,13 @@ function summarize(rows, now) {
     var key = GROUP_ORDER[g]
     var list = []
     for (var p = 0; p < periods.length; p++)
-      if (periods[p].group === key) list.push(periods[p])
+      if (periods[p].group === key && periods[p].avgW !== null) list.push(periods[p])
     if (!list.length) continue
-    var totWh = 0, totSecs = 0, n = 0
-    for (var q = 0; q < list.length; q++) {
-      if (list[q].avgW !== null) { totWh += list[q].usedWh; totSecs += list[q].sleepSecs; n++ }
-    }
+    var totWh = 0, totSecs = 0
+    for (var q = 0; q < list.length; q++) { totWh += list[q].usedWh; totSecs += list[q].sleepSecs }
     out.sleepGroups.push({
       key: key,
       periods: list.slice(Math.max(0, list.length - MAX_PER_GROUP)).reverse(),
-      count: list.length,
-      avgCount: n,
       avgW: totSecs > 0 ? totWh * 3600 / totSecs : null
     })
   }

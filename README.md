@@ -73,9 +73,9 @@ Turn off while sleeping
   Bluetooth [ ]   Wi-Fi [ ]
 
 Sleep periods
-  Nothing turned off   2.8 W  (4)
+  Nothing turned off   2.8 W
     09-23 20:11 → 20:43   2.1 W · 1.2 Wh
-  Bluetooth off   1.8 W  (2)
+  Bluetooth off   1.8 W
     09-24 08:12 → 08:50   1.8 W · 1.1 Wh
 ```
 
@@ -83,8 +83,9 @@ Two checkboxes on one line pick what is turned off before suspend. The list is
 grouped by that setting, and each group carries its own average, so the groups
 can be compared directly. Up to four recent sleeps are listed per group, one
 line each: when it started and ended, the average power and the energy used.
-Sleeps on the charger stay visible in an "On charger" group without a power
-figure, which is why a short test sleep still shows up.
+Only measured on-battery sleeps appear: sleeps on the charger have no
+meaningful drain figure, and sleeps too short for the battery gauge to resolve
+are omitted rather than shown without numbers.
 
 Each sleep period is measured between the samples around it: duration from the
 awake tick counter (jiffies only advance while awake), energy from the battery

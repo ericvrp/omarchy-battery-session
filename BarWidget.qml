@@ -276,9 +276,7 @@ BarWidget {
             Text {
               width: parent.width
               text: root.groupLabel(modelData.key)
-                    + (modelData.avgW !== null
-                       ? "   " + root.fmtW(modelData.avgW) + "  (" + modelData.avgCount + ")"
-                       : "   (" + modelData.count + ")")
+                    + (modelData.avgW !== null ? "   " + root.fmtW(modelData.avgW) : "")
               color: root.bar.foreground
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.body
@@ -293,9 +291,7 @@ BarWidget {
                 required property var modelData
                 width: parent.width
                 text: Model.clockRange(modelData.startWall, modelData.endWall)
-                      + (modelData.avgW !== null
-                         ? "   " + root.fmtW(modelData.avgW) + " · " + modelData.usedWh.toFixed(1) + " Wh"
-                         : "   " + root.t(modelData.charger ? "sleepCharging" : "sleepNoReading"))
+                      + "   " + root.fmtW(modelData.avgW) + " · " + modelData.usedWh.toFixed(1) + " Wh"
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption

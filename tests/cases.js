@@ -94,11 +94,20 @@ check(charger.length === 1 && charger[0].charger === true && charger[0].avgW ===
       && charger[0].group === "charger",
       "sleepPeriods: on-charger window kept without a power figure")
 const shortGap = ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.4], [3, "0", 20.3, 1]]), HZ)
-check(shortGap.length === (120 < ctx.MIN_SLEEP ? 0 : 1),
-      "sleepPeriods: " + ctx.MIN_SLEEP + "s minimum respected")
+const shortExpected = 120 < ctx.MIN_SLEEP ? 0 : 1
+check(shortGap.length === shortExpected
+      && (shortExpected === 0 || (shortGap[0].avgW === null && shortGap[0].usedWh === null)),
+      "sleepPeriods: " + ctx.MIN_SLEEP + "s minimum respected; below "
+      + ctx.MIN_MEASURE + "s listed without reading")
+// Two rows a suspend apart must not be mistaken for a normal sampling pair.
+const span = [
+  { wall: T0, jiffies: 1e9, boot: "b", pct: "50", state: "Discharging", ac: "0", wh: 20.5, pw: -5, settings: "" },
+  { wall: T0 + 95, jiffies: 1e9 + 58680, boot: "b", pct: "50", state: "Discharging", ac: "0", wh: 20.0, pw: -5, settings: "" }
+]
+check(ctx.detectHz(span) === 0, "detectHz: suspend-spanning pair rejected")
 const sum = ctx.summarize(sleepRows, T0 + 4000)
 check(sum.sleepGroups.length === 1 && sum.sleepGroups[0].key === "bt"
-      && Math.abs(sum.sleepGroups[0].avgW - 2.0) < 0.01 && sum.sleepGroups[0].avgCount === 1,
+      && Math.abs(sum.sleepGroups[0].avgW - 2.0) < 0.01,
       "summarize: periods grouped by turned-off setting with a group average")
 check(ctx.chargeKind({ state: "Discharging", ac: "0" }) === "discharging"
       && ctx.chargeKind({ state: "Charging", ac: "1" }) === "charging"
@@ -106,6 +115,6 @@ check(ctx.chargeKind({ state: "Discharging", ac: "0" }) === "discharging"
       && ctx.chargeKind({ state: "Not charging", ac: "1" }) === "full",
       "chargeKind: discharging / charging / full")
 
-const checks = cases.length + parseCases.length + 7
+const checks = cases.length + parseCases.length + 8
 console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)
