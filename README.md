@@ -1,203 +1,195 @@
 # Sleep Actions
 
-A fork of [hungmi/omarchy-battery-session](https://github.com/hungmi/omarchy-battery-session)
-by **hungmi**, who wrote the original battery-session measurement (the sampler,
-the awake-time model, the bar widget and its translation). This fork keeps that
-engine and adds sleep-time radio actions plus logging that ties those settings
-to the measurements. The original copyright is retained in `LICENSE`.
+**A derived work by Eric van Riet Paap**, forked from **Battery Session** by
+[hungmi](https://github.com/hungmi)
+([hungmi/omarchy-battery-session](https://github.com/hungmi/omarchy-battery-session)).
+The original plugin's README is kept verbatim at the bottom of this file, and
+`LICENSE` retains the original copyright (© 2026 hungmi).
 
-## Why this exists
+## Why this fork exists
 
-On Apple Silicon Macs running Omarchy / Asahi Linux, suspend is `s2idle`: the
-machine keeps drawing meaningfully more power than macOS standby, so a night
-with the lid closed can cost tens of percent. The Asahi project's docs describe
-the platform limits, but there is little practical data on what individual
-radios cost during those sleeps on this hardware.
+On Apple Silicon Macs running Omarchy (Asahi Linux), suspend is `s2idle`, and
+the machine keeps drawing meaningfully more power than macOS standby — a night
+with the lid closed can cost tens of percent. Asahi documents the platform
+limits, but there is little practical data about what individual radios cost
+during those sleeps on this hardware. Eric needed a way to measure it on his
+own machine (MacBook Pro 14", M1 Pro, `MacBookPro18,3`): sleep with Bluetooth
+and/or Wi-Fi turned off before suspend, then compare the average power (W) and
+energy (Wh) per setting instead of guessing.
 
-This fork was built to measure exactly that on a MacBook Pro 14" (M1 Pro,
-`MacBookPro18,3`): run sleeps with Bluetooth and/or Wi-Fi turned off, and let
-the plugin report each setting group's average power (W) and energy (Wh), so
-the effect of the settings can be compared on real Apple Silicon hardware
-instead of guessed at. The same numbers are useful on any battery-powered
-machine.
+The same numbers are useful on any battery-powered laptop, but the Apple
+Silicon / `s2idle` case is why this fork exists.
 
-On the bar: a battery glyph and the current charge in percent. Clicking it
-opens the sleep panel with the action checkboxes and the measured sleep
-periods.
+## What this fork adds on top of Battery Session
 
-## Sleep actions
+- **Bar**: a state icon (level while discharging, bolt while charging, charged
+  glyph when full) and the charge percentage.
+- **Sleep actions**: two checkboxes, *Bluetooth* and *Wi-Fi*, under
+  "Turn off while sleeping". Checked means the radio is blocked with `rfkill`
+  right before suspend and unblocked again on wake (no root needed; a leftover
+  block is reconciled when the plugin starts or stops).
+- **Sleep periods**: measured suspends grouped by which radios were off, each
+  group with its own average power. One line per sleep: start → end, W · Wh.
+  Only on-battery sleeps with a reading the gauge can resolve are listed.
+- **Logging**: every 60 s sample carries the settings in effect
+  (`bt=off;wifi=keep`), and `events.tsv` records settings changes plus each
+  sleep's pre/post actions, so measurements can be traced back to the setting.
+- **Folder / Clear** links in the panel: open the database folder, or delete
+  the recorded samples (two-step confirmation).
+- **Own database**: samples and the event log live in
+  `~/.local/share/sleep-actions/`, not in the original plugin's directory.
+- Plugin id renamed to `ericvrp.sleep-actions`; the original
+  time-left / time-in-use number and its right-click cycling were removed.
 
-| Option | What it does |
-|---|---|
-| Nothing turned off | Default: radios behave exactly as they do today |
-| Bluetooth off | Blocks the Bluetooth radio before suspend, unblocks it on wake |
-| Wi-Fi off | Blocks the Wi-Fi radio before suspend, unblocks it on wake |
-| Bluetooth + Wi-Fi off | Both of the above |
-
-Both default to off (radios kept on). The point is to test whether a radio is
-what keeps the machine drawing power while suspended: flip one on, leave the
-machine asleep for a while, and compare `events.tsv` / the settings column
-against the discharge numbers.
-
-How it works:
-
-- `sleep-watch.sh` is a long-lived user process started by the plugin service.
-  It subscribes to logind's `PrepareForSleep` signal on the system bus.
-- On suspend it runs `sleepctl.sh apply-pre`; on wake `sleepctl.sh apply-post`.
-  The controller uses `rfkill` (no root needed: `/dev/rfkill` carries a
-  logind-managed ACL for the active session).
-- Radios already blocked by the user are left alone; the controller only
-  touches what it blocked itself, tracked in
-  `~/.local/state/omarchy/sleep-actions/applied`.
-- If the watcher stops (shell restart, plugin disable, crash) it reconciles:
-  anything left blocked is unblocked again. On start it does the same, so a
-  machine that shut down while asleep never comes up with a radio stuck off.
-- Nothing waits for a suspend. If the watcher or the controller fails, sleep
-  works exactly as if the plugin were not installed; the only effect is that
-  the action did not run.
-
-## Logging
-
-Two additions make the settings visible to the measurements:
-
-- Every 60 s sample gains a ninth column with the policy in effect at that
-  moment, e.g. `bt=off;wifi=keep`. Rows written before the fork have eight
-  fields and read as "no settings recorded".
-- `~/.local/share/sleep-actions/events.tsv` gets a line at every change and
-  every action (tab separated `wall`, `event`, `detail`):
-
-```
-wall	event	detail
-1788400000	settings	bluetooth=off
-1788410000	pre	settings=bluetooth=off,wifi=keep bluetooth=blocked
-1788413600	post	bluetooth=unblocked
-1788420000	reconcile	nothing-to-restore
-```
-
-That is enough to line up a suspend window with the policy that was active
-and to confirm the radio actually went off.
-
-## What it shows
-
-On the bar: a battery glyph and the current charge in percent. Clicking opens
-the panel:
-
-```
-Turn off while sleeping
-  Bluetooth [ ]   Wi-Fi [ ]
-
-Sleep periods                 Folder  Clear
-  Nothing turned off   2.8 W
-    09-23 20:11 → 20:43   2.1 W · 1.2 Wh
-  Bluetooth off   1.8 W
-    09-24 08:12 → 08:50   1.8 W · 1.1 Wh
-```
-
-Two checkboxes on one line pick what is turned off before suspend. The list is
-grouped by that setting, and each group carries its own average, so the groups
-can be compared directly. Up to four recent sleeps are listed per group, one
-line each: when it started and ended, the average power and the energy used.
-Only measured on-battery sleeps appear: sleeps on the charger have no
-meaningful drain figure, and sleeps too short for the battery gauge to resolve
-are omitted rather than shown without numbers.
-
-`Folder` opens the database directory in the file manager; `Clear` (two-step:
-it first asks "Sure?") deletes the recorded samples, keeping settings and the
-event log.
-
-Each sleep period is measured between the samples around it: duration from the
-awake tick counter (jiffies only advance while awake), energy from the battery
-gauge, and average power derived from those. The energy is taken from the
-first settled sample after wake, so the fuel gauge's post-resume lag does not
-understate a sleep.
-
-Power (W) and energy (Wh) are absolute, so they can be compared across
-machines and battery sizes; a percentage-per-hour figure is deliberately not
-shown because it would depend on the battery capacity. The recorded sleep
-action settings are also kept in the sample column and in `events.tsv` (see
-Logging above), so the group of any period can be checked against the raw
-data.
-
-Group averages cover every measured period in the retained history (the last
-12 monthly files), not only the listed ones. Time-left estimates and the bar
-label still use awake power only; suspend energy is never mixed into them.
-Languages: English, Traditional Chinese and Simplified Chinese, following the
-system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simplified).
-
-## Data files
-
-The `Folder` link in the panel opens `~/.local/share/sleep-actions/`, which
-contains two TSV files:
-
-- `YYYY-MM.tsv` (one per month, last 12 kept) — **the sample database**. One
-  tab-separated row per minute, written by `sample.sh`:
-
-  | column | meaning |
-  |---|---|
-  | `wall` | Unix time in seconds |
-  | `jiffies` | scheduler tick count; advances only while awake |
-  | `boot` | first 8 chars of the boot id (rows never mix boots) |
-  | `pct` | battery charge, integer percent |
-  | `state` | `Charging` / `Discharging` / `Full` / … |
-  | `ac` | 1 = mains power, 0 = battery |
-  | `energy_wh` | remaining energy in Wh |
-  | `power_w` | instantaneous power in W (negative = discharging) |
-  | `settings` | `bt=off;wifi=keep` style policy in effect at that moment |
-
-  Everything in the panel is derived from these rows: awake time is the
-  jiffies difference, a sleep is a wall-time gap larger than the jiffies
-  difference, and the drain is the energy difference across it. The file
-  starts empty on a fresh install; rows recorded before the settings column
-  existed are not imported.
-
-- `events.tsv` — **the action log**. One row per event (`wall`, `event`,
-  `detail`): settings changes, the pre/post actions of each suspend, the
-  reconcile on start/stop, and clears. It is diagnostic only — the panel does
-  not read it — but it is the record of what was actually blocked and restored
-  during a given sleep.
-
-Other files:
-
-- `~/.config/omarchy/sleep-actions.conf` — the two settings.
-- `~/.local/state/omarchy/sleep-actions/applied` — what is currently blocked
-  by the plugin, so it can be restored.
-
-## Install
-
-This is a local fork; install it from the checkout:
+## Install this fork
 
 ```bash
-omarchy plugin add https://github.com/<you>/omarchy-sleep-actions.git --enable
-```
-
-or clone it straight into place and enable it:
-
-```bash
-git clone https://github.com/<you>/omarchy-sleep-actions.git \
-  ~/.config/omarchy/plugins/ericvrp.sleep-actions
+git clone <your-fork-url> ~/.config/omarchy/plugins/ericvrp.sleep-actions
 omarchy-shell shell rescanPlugins
 omarchy plugin enable ericvrp.sleep-actions --section right
 ```
 
-Settings, via the popup, or:
+Then click the battery icon in the bar: the "Sleep periods" list fills as you
+suspend on battery, grouped by the checkboxes' settings.
+
+## Credits
+
+- **hungmi** — original Battery Session: the sampler, awake-time model, bar
+  widget, translations and the documentation kept below.
+- **Eric van Riet Paap** — this fork: sleep-time radio actions, sleep-period
+  measurement and grouping, logging, packaging and documentation.
+
+---
+
+## Original README: Battery Session
+
+_The text below is the original README from
+[hungmi/omarchy-battery-session](https://github.com/hungmi/omarchy-battery-session),
+kept verbatim. It documents the original plugin id and install command; the
+differences of this fork are described above._
+
+# Battery Session
+
+An [Omarchy](https://omarchy.org) bar widget that tells you how long this battery
+charge has **actually** been in use.
+
+Omarchy's power panel shows the current draw and charge level, but not how long
+you have been running on this charge. Simple wall-clock time is wrong: it counts
+the hours the lid was closed. This plugin counts only the time the machine was
+awake, so lock screen and idle time count (the machine is still drawing power),
+while suspend and shutdown do not.
+
+## What it shows
+
+On the bar: a battery glyph and one number. Right-click to cycle between:
+
+| Mode | Meaning |
+|---|---|
+| Time left (all-time avg) | Remaining charge ÷ your average awake power draw across all recorded discharges. Default. |
+| Time left (session avg) | Same, using only this discharge's average. |
+| Time in use | Awake time since unplugging. |
+
+Click to open the details:
+
+```
+Battery life
+  Unplugged at           09-03 16:11  100%
+  Now                    09-03 23:46   71%
+  Time since unplugged   7h 35m
+  Suspended / off        5h 27m
+  Time in use            2h 08m
+  Discharging            now 5.0W · session avg 4.7W
+  Time left              6h 04m (session avg 4.7W)
+                         4h 10m (all-time avg 6.9W)
+```
+
+plus a list of your last eight discharges.
+
+Averages use awake power only. Suspend still draws roughly 1 W on many laptops;
+that energy is reported separately as "Used while asleep" so it does not
+inflate your estimate.
+
+Languages: English, Traditional Chinese and Simplified Chinese, following the
+system locale (`zh_TW` / `zh_HK` / `zh_MO` → Traditional, other `zh` → Simplified).
+
+## How it works
+
+Every 60 seconds a small bash script records the battery state together with
+the kernel's scheduler tick count (`/proc/schedstat`). That counter only
+advances while the machine is awake, so the awake time between any two samples
+is just the difference. Nothing needs to observe suspend or resume events, and
+a missed sample, a shell restart, or a reboot self-corrects on the next sample.
+
+Samples go to `~/.local/share/battery-session/YYYY-MM.tsv`, one file per month,
+last 12 months kept. Roughly 2.5 MB per month, so about 30 MB on disk at most.
+
+Sampling runs inside the Omarchy shell. When the shell is not running (before
+login, or after `omarchy restart shell`) no samples are taken. Awake time is
+unaffected; a charge that happened entirely during such a gap is detected from
+the jump in stored energy.
+
+## Security notes
+
+The plugin runs as your user inside the Omarchy shell, like every shell plugin.
+What it does with that:
+
+- **One child process at a time.** At startup and then every 60 seconds the
+  service starts `/usr/bin/bash` by absolute path with `--noprofile --norc`, a
+  cleared environment (`PATH=/usr/bin`, `LC_ALL=C`, and the system `TZ` so
+  month file names agree), stdin and stderr closed, and a hard deadline
+  (SIGTERM after 20 s for a sample or 30 s for the startup load, SIGKILL 5 s
+  later). Both are stopped when the service is destroyed.
+- **The script is bash builtins.** `sample.sh` reads `/sys/class/power_supply`
+  and `/proc/schedstat` with `read`; there is no awk, cut, ls, sort or xargs.
+  The only external programs are `/usr/bin/dd` (every file read and write),
+  `/usr/bin/mkdir` (missing directories) and `/usr/bin/rm` (monthly
+  retention), all by absolute path.
+- **File opens are bound to the checks.** Every data file is opened by `dd`
+  with `O_NOFOLLOW` (a symlink at the path fails), `O_NONBLOCK` (a fifo or
+  device cannot block), and `O_EXCL` when a month file is created (anything
+  that appeared at the path in between fails). Reads are capped at 4 MiB per
+  month file on the producer side, so the shell never buffers more than three
+  such files. `mkdir` refuses a symlink at the target and `rm` never follows
+  one. Ownership and type are additionally checked on the path before each
+  open.
+- **The data directory is not taken from the environment.** It is always
+  `~/.local/share/battery-session`, with `~` resolved from the password
+  database. Missing directory levels are created; `~`, `~/.local`,
+  `~/.local/share` and the data directory must be owned by the current user
+  and not be symlinks. The data directory is created with mode 0700. Any
+  failure aborts the sample (exit 5, shown in the popup).
+- **Bounded parsing.** At most 150 000 rows are kept in memory and a sampler
+  line over 256 characters is discarded.
+- **No network, no sudo, no systemd units, no writes outside the data
+  directory, no configuration changes** other than the `barLabel` value the
+  widget writes to `shell.json` when you right-click it.
+
+## Install
 
 ```bash
-~/.config/omarchy/plugins/ericvrp.sleep-actions/sleepctl.sh set bluetooth off
-~/.config/omarchy/plugins/ericvrp.sleep-actions/sleepctl.sh get
+omarchy plugin add https://github.com/hungmi/omarchy-battery-session
 ```
+
+The widget appears on the right side of the bar next to the power indicator.
+It needs two samples (about a minute) before showing numbers.
+
+Settings, via `omarchy bar set hungmi.battery-session <key> <value>`:
+
+| Key | Values | Default |
+|---|---|---|
+| `barLabel` | `remainHist` `remainCur` `awake` | `remainHist` |
+| `lang` | `auto` `en` `zh-Hant` `zh-Hans` | `auto` |
 
 ## Remove
 
 ```bash
-omarchy plugin disable ericvrp.sleep-actions
-omarchy plugin remove ericvrp.sleep-actions
+omarchy plugin remove hungmi.battery-session
 ```
 
-Removing does not delete recorded data. To remove that too:
+Removal does not delete the recorded data. To remove that too:
 
 ```bash
-rm -rf ~/.local/share/sleep-actions ~/.local/state/omarchy/sleep-actions
-rm -f ~/.config/omarchy/sleep-actions.conf
+rm -rf ~/.local/share/battery-session
 ```
 
 ## Requirements
@@ -205,22 +197,20 @@ rm -f ~/.config/omarchy/sleep-actions.conf
 - Omarchy 4.x shell (Quickshell based)
 - A laptop battery exposed under `/sys/class/power_supply/` with either
   `energy_now` or `charge_now` + `voltage_now`
-- `/usr/bin/bash`, `/usr/bin/dd`, `/usr/bin/mkdir`, `/usr/bin/rm`,
-  `/usr/bin/mv`, `/usr/bin/rfkill`, `/usr/bin/timeout`, `/usr/bin/sleep`,
-  `/usr/bin/dbus-monitor` (all part of a base Arch install or its dependencies)
-- No Python, no network, no systemd units, no sudo
+- `/usr/bin/bash` 4.3 or newer (part of any Arch base install). No Python, no awk, no extra packages.
 
-## Trust boundary
+## Development
 
-Everything runs as the desktop user inside the Omarchy shell. `sample.sh`
-reads `/sys/class/power_supply` and `/proc/schedstat`; `sleepctl.sh` reads and
-writes the settings, state and log files and calls `rfkill`;
-`sleep-watch.sh` only subscribes to the system bus and dispatches. External
-programs are used by absolute path, file opens use `O_NOFOLLOW` and
-`O_NONBLOCK`, settings and state are written via an exclusive temp file and
-renamed into place, and every directory level is verified owned by the user
-and not a symlink first.
+`Model.js` holds the algorithm and is plain JavaScript, so it can be tested
+outside the shell:
+
+```bash
+node tests/cases.js
+```
+
+After editing QML or JS, `omarchy restart shell`. If the widget disappears from
+the bar, check `journalctl --user -o cat | grep 'Plugin widget'` for the error.
 
 ## License
 
-MIT. Forked from `hungmi/omarchy-battery-session`, © hungmi; see LICENSE.
+MIT. No external dependencies.
