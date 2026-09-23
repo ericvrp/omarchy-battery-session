@@ -81,6 +81,25 @@ BarWidget {
   readonly property bool opened: popupOpen
   function open() { popupOpen = true }
   function close() { popupOpen = false }
+  onPopupOpenChanged: if (!popupOpen) { root.clearArmed = false; clearDisarm.stop() }
+
+  // Two-step clear: first click arms, second click deletes the recorded stats.
+  property bool clearArmed: false
+  Timer {
+    id: clearDisarm
+    interval: 4000
+    onTriggered: root.clearArmed = false
+  }
+  function armOrClear() {
+    if (root.clearArmed) {
+      root.clearArmed = false
+      clearDisarm.stop()
+      if (root.service) root.service.clearStats()
+    } else {
+      root.clearArmed = true
+      clearDisarm.restart()
+    }
+  }
 
   // Icon and text are separate Text items (as omarchy.media does). A single Text
   // mixing a Nerd glyph and text under-reports implicitWidth by about one
@@ -199,10 +218,38 @@ BarWidget {
 
       PanelSeparator { foreground: root.bar.foreground }
 
-      PanelSectionHeader {
-        text: root.t("sleepPeriods")
-        foreground: root.bar.foreground
-        fontFamily: root.bar.fontFamily
+      Row {
+        width: parent.width
+        spacing: Style.space(6)
+
+        PanelSectionHeader {
+          text: root.t("sleepPeriods")
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          width: parent.width - clearItem.width - parent.spacing
+        }
+
+        Item {
+          id: clearItem
+          width: clearText.implicitWidth
+          height: clearText.implicitHeight
+
+          Text {
+            id: clearText
+            anchors.fill: parent
+            text: root.clearArmed ? root.t("clearSure") : root.t("clear")
+            color: root.clearArmed ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            enabled: !root.service || !root.service.clearing
+            onClicked: root.armOrClear()
+          }
+        }
       }
 
       Text {
@@ -248,7 +295,7 @@ BarWidget {
                 text: Model.clockRange(modelData.startWall, modelData.endWall)
                       + (modelData.avgW !== null
                          ? "   " + root.fmtW(modelData.avgW) + " · " + modelData.usedWh.toFixed(1) + " Wh"
-                         : "   " + root.t("sleepCharging"))
+                         : "   " + root.t(modelData.charger ? "sleepCharging" : "sleepNoReading"))
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption

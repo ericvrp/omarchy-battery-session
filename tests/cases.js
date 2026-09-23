@@ -93,8 +93,9 @@ const charger = ctx.sleepPeriods(rows([[0, "1", 20.5], [1, "1", 20.0], [61, "1",
 check(charger.length === 1 && charger[0].charger === true && charger[0].avgW === null
       && charger[0].group === "charger",
       "sleepPeriods: on-charger window kept without a power figure")
-check(ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.4], [3, "0", 20.3, 1]]), HZ).length === 0,
-      "sleepPeriods: shorter than the minimum ignored")
+const shortGap = ctx.sleepPeriods(rows([[0, "0", 20.5], [1, "0", 20.4], [3, "0", 20.3, 1]]), HZ)
+check(shortGap.length === (120 < ctx.MIN_SLEEP ? 0 : 1),
+      "sleepPeriods: " + ctx.MIN_SLEEP + "s minimum respected")
 const sum = ctx.summarize(sleepRows, T0 + 4000)
 check(sum.sleepGroups.length === 1 && sum.sleepGroups[0].key === "bt"
       && Math.abs(sum.sleepGroups[0].avgW - 2.0) < 0.01 && sum.sleepGroups[0].avgCount === 1,

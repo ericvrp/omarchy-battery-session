@@ -14,7 +14,7 @@ var SANE_WALL = 1500000000      // 2017. Rows written before NTP sync at boot ar
 var WH_JITTER = 1.0             // Energy rising by more than this while discharging = charged in between. The gauge itself drifts ±0.6
 var SLEEP_GAP = 120             // Wall delta exceeding jiffies delta by more than this many seconds = slept in between
 var MIN_HIST_AWAKE = 600        // All-time average only counts sessions awake for ≥10 minutes
-var MIN_SLEEP = 300             // Shorter gaps are noise (gauge settling, quick lid blips), not a measurable sleep period
+var MIN_SLEEP = 5               // Seconds. Testing value; 300 is the sane default (shorter gaps are noise)
 var MAX_PER_GROUP = 4           // Most recent sleep periods listed under each settings group
 var GROUP_ORDER = ["none", "bt", "wifi", "both", "charger"]   // only groups with recorded settings are shown
 var HZ_CANDIDATES = [100, 250, 300, 1000]

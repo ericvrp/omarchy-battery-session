@@ -9,6 +9,7 @@
 #   set <key> <value>      validate, persist, and immediately restore a radio
 #                          that is switched back to keep while still blocked
 #   status                 print what this plugin has blocked right now
+#   clear                  delete the recorded sample history (stats only)
 #   apply-pre              run the configured pre-suspend actions
 #   apply-post             restore whatever apply-pre changed
 #   reconcile              restore leftovers (start/stop of the watcher)
@@ -251,6 +252,16 @@ do_status() {
   printf 'blocked=%s\n' "${out:-none}"
 }
 
+# Delete the recorded stats (month files). Settings, state and the event log
+# are kept; the sampler recreates the month file on its next run.
+do_clear() {
+  local f
+  for f in "$data"/[0-9][0-9][0-9][0-9]-[0-9][0-9].tsv; do
+    owned_file "$f" && $RM -f -- "$f"
+  done
+  log_event clear "sample history removed"
+}
+
 mode=${1:-}
 case $mode in
   get)
@@ -265,6 +276,9 @@ case $mode in
     ;;
   status)
     do_status
+    ;;
+  clear)
+    do_clear
     ;;
   apply-pre)
     do_pre

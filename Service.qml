@@ -54,6 +54,7 @@ Item {
   property string sleepError: ""
   property var setQueue: []
   property bool destroying: false
+  readonly property alias clearing: clearProc.running
 
   function recompute() {
     root.summary = Model.summarize(root.rows, Math.floor(Date.now() / 1000))
@@ -111,6 +112,7 @@ Item {
   }
   Watchdog { id: optionsWatch }
   Watchdog { id: setWatch }
+  Watchdog { id: clearWatch }
 
   // ---- startup: bounded history dump, then the first sample ----
   Process {
@@ -260,6 +262,33 @@ Item {
     }
   }
 
+  // ---- clear the recorded stats ----
+  function clearStats() {
+    if (clearProc.running) return
+    clearProc.command = root.scriptCommand("sleepctl.sh").concat(["clear"])
+    clearProc.running = true
+  }
+
+  Process {
+    id: clearProc
+    running: false
+    clearEnvironment: true
+    environment: root.cleanEnvironment
+    stdinEnabled: false
+    stdout: null
+    stderr: null
+    onStarted: clearWatch.arm(clearProc, root.helperDeadlineSec)
+    onExited: function(code, status) {
+      clearWatch.disarm()
+      if (status === 0 && code === 0) {
+        root.rows = []
+        root.recompute()
+      } else if (status === 0) {
+        root.sleepError = "errSleepActions"
+      }
+    }
+  }
+
   // ---- sleep watcher ----
   Process {
     id: sleepWatchProc
@@ -292,6 +321,7 @@ Item {
     if (loadProc.running) loadProc.signal(15)
     if (optionsProc.running) optionsProc.signal(15)
     if (setOptionProc.running) setOptionProc.signal(15)
+    if (clearProc.running) clearProc.signal(15)
     if (sleepWatchProc.running) sleepWatchProc.signal(15)
     root.setQueue = []
   }
