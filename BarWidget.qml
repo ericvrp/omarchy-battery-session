@@ -14,14 +14,7 @@ BarWidget {
   readonly property var service: bar && bar.shell && typeof bar.shell.serviceFor === "function"
     ? (bar.shell._services, bar.shell.serviceFor(moduleName)) : null
   readonly property var summary: service ? service.summary : null
-  readonly property var cur: summary ? summary.current : null
-  readonly property bool live: cur ? cur.live : false
 
-  // Which value the bar shows; set via: omarchy bar set ericvrp.sleep-actions barLabel <value>
-  //   remainHist  time left, all-time average (current session included). Default:
-  //               steadier than the session average right after unplugging
-  //   remainCur   time left, this session's average
-  //   awake       time in use since unplugging
   readonly property string lang: S.resolve(setting("lang", "auto"), Qt.locale().name)
   readonly property bool zh: S.isZh(lang)
   function t(key) { return S.t(lang, key) }
@@ -60,22 +53,6 @@ BarWidget {
          : p >= 15 ? "󰁻" : p >= 5 ? "󰁺" : "󰂃"
   }
 
-  readonly property string mode: setting("barLabel", "remainHist")
-  readonly property var labelSecs: !live ? null
-    : mode === "awake" ? cur.awakeSecs
-    : mode === "remainCur" ? cur.remainCurSecs
-    : cur.remainHistSecs
-  readonly property string label: labelSecs ? Model.hm(labelSecs) : ""
-  readonly property string labelDesc: mode === "awake" ? t("tipAwake") : mode === "remainCur" ? t("tipRemainCur") : t("tipRemainHist")
-
-  // Right-click cycles the mode. Written to shell.json so it persists; shell.json
-  // hot-reloads, so setting() updates by itself.
-  readonly property var modes: ["remainHist", "remainCur", "awake"]
-  function cycleMode() {
-    var next = modes[(Math.max(0, modes.indexOf(mode)) + 1) % modes.length]
-    if (bar) bar.run("omarchy bar set " + moduleName + " barLabel " + next)
-  }
-
   property bool popupOpen: false
   // Used by shell.summon / hide / toggle
   readonly property bool opened: popupOpen
@@ -101,9 +78,7 @@ BarWidget {
     }
   }
 
-  // Icon and text are separate Text items (as omarchy.media does). A single Text
-  // mixing a Nerd glyph and text under-reports implicitWidth by about one
-  // character and overlaps the widget to the right.
+  // Icon and charge percentage only.
   implicitWidth: row.implicitWidth + Style.space(14)
   implicitHeight: barSize
 
@@ -130,29 +105,13 @@ BarWidget {
       font.family: root.bar.fontFamily
       font.pixelSize: Style.font.body
     }
-
-    Text {
-      id: labelText
-      anchors.verticalCenter: parent.verticalCenter
-      visible: !root.vertical && root.label !== ""
-      text: root.label
-      color: root.bar.barForeground
-      font.family: root.bar.fontFamily
-      font.pixelSize: Style.font.body
-    }
   }
 
   MouseArea {
     anchors.fill: parent
-    hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    acceptedButtons: Qt.LeftButton | Qt.RightButton
-    onClicked: function(mouse) {
-      if (mouse.button === Qt.RightButton) root.cycleMode()
-      else root.popupOpen = !root.popupOpen
-    }
-    onEntered: if (root.bar) root.bar.showTooltip(root, (root.live ? (root.zh ? root.labelDesc + " " + root.label : root.label + " " + root.labelDesc) : root.t("onAc")) + "\n" + root.t("rightClick"))
-    onExited: if (root.bar) root.bar.hideTooltip(root)
+    acceptedButtons: Qt.LeftButton
+    onClicked: root.popupOpen = !root.popupOpen
   }
 
   PopupCard {

@@ -1,14 +1,29 @@
 # Sleep Actions
 
 A fork of [hungmi/omarchy-battery-session](https://github.com/hungmi/omarchy-battery-session)
-that keeps the battery-session measurement and adds a dropdown of actions to
-run when the machine goes to sleep, plus logging that ties those settings to
-the measurements.
+by **hungmi**, who wrote the original battery-session measurement (the sampler,
+the awake-time model, the bar widget and its translation). This fork keeps that
+engine and adds sleep-time radio actions plus logging that ties those settings
+to the measurements. The original copyright is retained in `LICENSE`.
 
-On the bar: a battery glyph, the current charge in percent, and one number
-(time left or time in use). Clicking it opens the sleep panel with the action
-toggles and the measured sleep periods. Right-click still cycles the bar
-label.
+## Why this exists
+
+On Apple Silicon Macs running Omarchy / Asahi Linux, suspend is `s2idle`: the
+machine keeps drawing meaningfully more power than macOS standby, so a night
+with the lid closed can cost tens of percent. The Asahi project's docs describe
+the platform limits, but there is little practical data on what individual
+radios cost during those sleeps on this hardware.
+
+This fork was built to measure exactly that on a MacBook Pro 14" (M1 Pro,
+`MacBookPro18,3`): run sleeps with Bluetooth and/or Wi-Fi turned off, and let
+the plugin report each setting group's average power (W) and energy (Wh), so
+the effect of the settings can be compared on real Apple Silicon hardware
+instead of guessed at. The same numbers are useful on any battery-powered
+machine.
+
+On the bar: a battery glyph and the current charge in percent. Clicking it
+opens the sleep panel with the action checkboxes and the measured sleep
+periods.
 
 ## Sleep actions
 
@@ -64,9 +79,8 @@ and to confirm the radio actually went off.
 
 ## What it shows
 
-On the bar: a battery glyph, the current charge (percent) and one number.
-Right-click cycles the number between time left (all-time average), time left
-(this discharge's average) and time in use. Clicking opens the panel:
+On the bar: a battery glyph and the current charge in percent. Clicking opens
+the panel:
 
 ```
 Turn off while sleeping

@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "ericvrp.sleep-actions",
   "name": "Sleep Actions",
-  "version": "0.3.3",
-  "author": "Eric van Riet Paap (fork of hungmi.battery-session by hungmi)",
+  "version": "0.4.0",
+  "author": "Eric van Riet Paap; original Battery Session by hungmi (https://github.com/hungmi)",
   "license": "MIT",
-  "description": "Battery session measurement plus controls for what to shut down before suspend (Bluetooth, Wi-Fi), with the active settings recorded in every sample.",
+  "description": "Battery glyph and charge in the bar, plus sleep-time radio actions with per-sleep W/Wh statistics grouped by setting. Fork of hungmi.battery-session to measure suspend drain on Apple Silicon (Omarchy/Asahi).",
   "kinds": [
     "service",
     "bar-widget"
@@ -22,21 +22,9 @@
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "barLabel": "remainHist",
       "lang": "auto"
     },
     "schema": [
-      {
-        "key": "barLabel",
-        "type": "enum",
-        "label": "Bar shows",
-        "options": [
-          "remainHist",
-          "remainCur",
-          "awake"
-        ],
-        "defaultValue": "remainHist"
-      },
       {
         "key": "lang",
         "type": "enum",
