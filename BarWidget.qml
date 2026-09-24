@@ -47,19 +47,6 @@ BarWidget {
   // 60 s sample. The sampler keeps feeding the Wh statistics only.
   readonly property var upDev: UPower.displayDevice
   readonly property bool upPresent: !!(upDev && upDev.isPresent)
-  function upStates() {
-    return {
-      Charging: UPowerDeviceState.Charging,
-      Discharging: UPowerDeviceState.Discharging,
-      FullyCharged: UPowerDeviceState.FullyCharged,
-      PendingCharge: UPowerDeviceState.PendingCharge
-    }
-  }
-  // Charge limit active, or UPower briefly claiming FullyCharged right after
-  // plug-in: show the level rather than flash the charged glyph (heuristic
-  // shared with the built-in power panel, see Model.chargeThresholdActive).
-  readonly property bool upThreshold: upPresent
-    ? Model.chargeThresholdActive(upDev, UPower.onBattery, upStates()) : false
   // Percentage shown in the bar: live when UPower has a device, else the last sample.
   readonly property var dispPct: upPresent
     ? Math.round(Math.max(0, Math.min(1, upDev.percentage)) * 100)
@@ -72,11 +59,15 @@ BarWidget {
   }
 
   // Icon follows the charge state: filled level while discharging, a charging
-  // glyph while charging, a charged glyph when full/topped up.
+  // glyph while charging, a charged glyph when on AC and not charging.
+  // Deliberately not the built-in panel's charge-limit heuristic: on Apple
+  // Silicon "Full" is reported around 98%, which that heuristic would read as
+  // a limit and then hide the plug-in change behind a level glyph.
   readonly property string batteryGlyph: {
     if (root.upPresent) {
-      if (!root.upThreshold && root.upDev.state === UPowerDeviceState.FullyCharged) return "󰂅"
-      if (!root.upThreshold && !UPower.onBattery) return "󰂄"
+      var st = root.upDev.state
+      if (st === UPowerDeviceState.Charging || st === UPowerDeviceState.PendingCharge) return "󰂄"
+      if (!UPower.onBattery) return "󰂅"
       return root.levelGlyph(root.dispPct === null ? 100 : root.dispPct)
     }
     // UPower not up yet: fall back to the last sampled state.

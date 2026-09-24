@@ -91,25 +91,6 @@ function chargeKind(r) {
   return "discharging"
 }
 
-// UPower can claim FullyCharged for a moment right after the charger is
-// plugged in above a charge limit, and a battery held at a limit reports
-// Charging/PendingCharge with no energy flowing. Both mean "not actually
-// filling up", so the live bar icon shows the level instead of the charged or
-// charging glyph. Heuristic shared with the built-in power panel.
-function chargeThresholdActive(device, onBattery, states) {
-  var d = device || {}
-  var s = states || {}
-  if (!(d.isPresent && !onBattery)) return false
-
-  var fraction = Math.max(0, Math.min(1, Number(d.percentage || 0)))
-  if (d.state === s.Discharging) return false
-  if (d.state === s.PendingCharge) return true
-  if (d.state === s.FullyCharged && fraction < 0.99) return true
-  if (d.state !== s.Charging || fraction >= 0.99) return false
-
-  return Number(d.changeRate || 0) <= 0.2 || Number(d.timeToFull || 0) >= 8 * 60 * 60
-}
-
 // --- sleep periods ---------------------------------------------------------
 // The settings column written by sample.sh: "bt=off;wifi=keep". Values not
 // recorded (rows from before the fork, or a foreign writer) stay null.
