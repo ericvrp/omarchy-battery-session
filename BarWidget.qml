@@ -102,6 +102,39 @@ BarWidget {
     }
   }
 
+  // Copy: put the stats as plain text on the clipboard (Quickshell's native
+  // clipboard), with a brief check glyph as confirmation.
+  property bool copyDone: false
+  Timer {
+    id: copyReset
+    interval: 1200
+    onTriggered: root.copyDone = false
+  }
+  function statsText() {
+    var s = root.summary
+    var lines = [root.t("sleepPeriods")]
+    if (!s || s.sleepGroups.length === 0) {
+      lines.push(root.t("sleepNoData"))
+      return lines.join("\n") + "\n"
+    }
+    for (var i = 0; i < s.sleepGroups.length; i++) {
+      var g = s.sleepGroups[i]
+      lines.push(root.groupLabel(g.key)
+                 + (g.avgW !== null ? " — " + root.t("sleepAverage") + " " + root.fmtW(g.avgW) : ""))
+      for (var j = 0; j < g.periods.length; j++) {
+        var p = g.periods[j]
+        lines.push("  " + Model.clockRange(p.startWall, p.endWall)
+                   + " — " + root.fmtW(p.avgW) + " · " + p.usedWh.toFixed(1) + " Wh")
+      }
+    }
+    return lines.join("\n") + "\n"
+  }
+  function copyStats() {
+    Quickshell.clipboardText = root.statsText()
+    root.copyDone = true
+    copyReset.restart()
+  }
+
   // Icon and charge percentage only.
   implicitWidth: row.implicitWidth + Style.space(14)
   implicitHeight: barSize
@@ -172,73 +205,130 @@ BarWidget {
           text: root.t("sleepSection")
           foreground: root.bar.foreground
           fontFamily: root.bar.fontFamily
-          width: parent.width - folderItem.width - clearItem.width - parent.spacing * 2
+          width: parent.width - actions.width - parent.spacing
         }
 
-        Item {
-          id: folderItem
-          width: folderIcon.implicitWidth + Style.space(16)
-          height: folderIcon.implicitHeight + Style.space(6)
+        // The two actions sit closer to each other than to the rest of the row.
+        Row {
+          id: actions
+          spacing: Style.space(4)
 
-          Rectangle {
-            anchors.fill: parent
-            radius: Style.cornerRadius
-            color: folderMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
-            Behavior on color { ColorAnimation { duration: 80 } }
+          Item {
+            id: folderItem
+            width: folderIcon.implicitWidth + Style.space(16)
+            height: folderIcon.implicitHeight + Style.space(6)
+
+            Rectangle {
+              anchors.fill: parent
+              radius: Style.cornerRadius
+              color: folderMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            Text {
+              id: folderIcon
+              anchors.centerIn: parent
+              text: "󰉋"
+              color: folderMouse.containsMouse ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            MouseArea {
+              id: folderMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: if (root.service) root.service.openDataDir()
+            }
+
+            PanelToolTip {
+              visible: folderMouse.containsMouse
+              text: root.t("folderTip")
+              fontFamily: root.bar.fontFamily
+            }
           }
 
-          Text {
-            id: folderIcon
-            anchors.centerIn: parent
-            text: "󰉋"
-            color: folderMouse.containsMouse ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.body
-            Behavior on color { ColorAnimation { duration: 80 } }
+          Item {
+            id: copyItem
+            width: copyIcon.implicitWidth + Style.space(16)
+            height: copyIcon.implicitHeight + Style.space(6)
+
+            Rectangle {
+              anchors.fill: parent
+              radius: Style.cornerRadius
+              color: copyMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            Text {
+              id: copyIcon
+              anchors.centerIn: parent
+              text: root.copyDone ? "󰄬" : "󰆏"
+              color: root.copyDone ? root.bar.barForeground
+                : copyMouse.containsMouse ? root.bar.barForeground
+                : Qt.darker(root.bar.foreground, 1.5)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            MouseArea {
+              id: copyMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.copyStats()
+            }
+
+            PanelToolTip {
+              visible: copyMouse.containsMouse
+              text: root.copyDone ? root.t("copyDoneTip") : root.t("copyTip")
+              fontFamily: root.bar.fontFamily
+            }
           }
 
-          MouseArea {
-            id: folderMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: if (root.service) root.service.openDataDir()
-          }
-        }
+          Item {
+            id: clearItem
+            width: clearIcon.implicitWidth + Style.space(16)
+            height: clearIcon.implicitHeight + Style.space(6)
 
-        Item {
-          id: clearItem
-          width: clearIcon.implicitWidth + Style.space(16)
-          height: clearIcon.implicitHeight + Style.space(6)
+            Rectangle {
+              anchors.fill: parent
+              radius: Style.cornerRadius
+              color: clearMouse.containsMouse && clearMouse.enabled
+                ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
 
-          Rectangle {
-            anchors.fill: parent
-            radius: Style.cornerRadius
-            color: clearMouse.containsMouse && clearMouse.enabled
-              ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
-            Behavior on color { ColorAnimation { duration: 80 } }
-          }
+            Text {
+              id: clearIcon
+              anchors.centerIn: parent
+              text: "󰆴"
+              color: root.clearArmed ? Color.urgent
+                : clearMouse.containsMouse && clearMouse.enabled ? root.bar.barForeground
+                : Qt.darker(root.bar.foreground, 1.5)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+              font.bold: root.clearArmed
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
 
-          Text {
-            id: clearIcon
-            anchors.centerIn: parent
-            text: "󰆴"
-            color: root.clearArmed ? Color.urgent
-              : clearMouse.containsMouse && clearMouse.enabled ? root.bar.barForeground
-              : Qt.darker(root.bar.foreground, 1.5)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.body
-            font.bold: root.clearArmed
-            Behavior on color { ColorAnimation { duration: 80 } }
-          }
+            MouseArea {
+              id: clearMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              enabled: !root.service || !root.service.clearing
+              onClicked: root.armOrClear()
+            }
 
-          MouseArea {
-            id: clearMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            enabled: !root.service || !root.service.clearing
-            onClicked: root.armOrClear()
+            PanelToolTip {
+              visible: clearMouse.containsMouse && clearMouse.enabled
+              text: root.clearArmed ? root.t("clearSureTip") : root.t("clearTip")
+              fontFamily: root.bar.fontFamily
+            }
           }
         }
       }

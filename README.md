@@ -40,8 +40,9 @@ Silicon / `s2idle` case is why this fork exists.
   (`bt=off;wifi=keep`), and `events.tsv` records settings changes plus each
   sleep's pre/post actions, so measurements can be traced back to the setting.
   The sampler's 60 s cadence feeds the energy (Wh) statistics only.
-- **Folder / Clear** links in the panel: open the database folder, or delete
-  the recorded samples (two-step confirmation).
+- **Folder / Copy / Clear** icon buttons in the panel: open the database
+  folder, copy the sleep statistics as text to the clipboard, or delete the
+  recorded samples (two-step confirmation).
 - **Own database**: samples and the event log live in
   `~/.local/share/sleep-actions/`, not in the original plugin's directory.
 - Plugin id renamed to `ericvrp.sleep-actions`; the original
