@@ -5,10 +5,12 @@
 #
 # It subscribes to logind's PrepareForSleep signal on the system bus and runs
 # sleepctl.sh apply-pre before the machine suspends and sleepctl.sh apply-post
-# after it wakes. All file and radio work lives in sleepctl.sh; this script
-# only listens and dispatches, so a failure here can never hold up a suspend:
-# if the listener dies, the session simply behaves as if the plugin were not
-# installed.
+# after it wakes. After a wake it also prints one `resume` line on stdout, which
+# Service.qml reads to take a sample right away so the finished sleep shows up
+# in the stats without waiting for the next 60 s tick. All file and radio work
+# lives in sleepctl.sh; this script only listens, dispatches and reports, so a
+# failure here can never hold up a suspend: if the listener dies, the session
+# simply behaves as if the plugin were not installed.
 #
 # On startup, and again when the process is told to stop (shell restart, plugin
 # disable), it runs sleepctl.sh reconcile so a radio blocked by a previous
@@ -62,7 +64,7 @@ while (( ! stopping )); do
       done
       case $value in
       *true*)  run_ctl apply-pre ;;
-      *false*) run_ctl apply-post ;;
+      *false*) run_ctl apply-post; printf 'resume\n' ;;
       esac
       ;;
     esac

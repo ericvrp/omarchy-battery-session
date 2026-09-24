@@ -7,7 +7,10 @@ import "Model.js" as Model
 // (unlike bar widgets, which exist once per screen).
 //
 // Sampling: every 60 seconds it runs sample.sh, appends the returned line to
-// the in-memory list and recomputes the summary for widgets.
+// the in-memory list and recomputes the summary for widgets. On wake the
+// watcher reports resume, which takes one sample right away so the finished
+// sleep stops looking undetected; the regular tick then restarts so its next
+// sample is a full interval later (that one refines the energy figure).
 //
 // Sleep actions: a long-lived sleep-watch.sh listens on the system bus for
 // logind's PrepareForSleep and runs sleepctl.sh apply-pre / apply-post, which
@@ -34,6 +37,7 @@ Item {
   readonly property string samplerPath: String(Qt.resolvedUrl("sample.sh")).replace(/^file:\/\//, "")
   readonly property string pluginDir: root.samplerPath.replace(/\/[^\/]+$/, "")
   readonly property int intervalSec: 60
+  readonly property int resumeSampleDelayMs: 3000 // pause after wake so the battery driver is readable
   readonly property int sampleDeadlineSec: 20     // sample.sh normally finishes in well under a second
   readonly property int loadDeadlineSec: 30
   readonly property int helperDeadlineSec: 10     // sleepctl.sh get/set
@@ -152,6 +156,22 @@ Item {
     running: root.loaded
     repeat: true
     onTriggered: root.sample()
+  }
+
+  // The watcher reports a wake the moment logind says the machine is awake.
+  // Sampling right away (after a short pause for the battery driver) makes the
+  // just-finished sleep appear in the stats instead of looking undetected for
+  // up to a minute. Restarting tick keeps the next regular sample a full
+  // interval away, and that sample is the one the gauge settle correction in
+  // Model.sleepPeriods() uses to get the energy right.
+  Timer {
+    id: resumeSample
+    interval: root.resumeSampleDelayMs
+    onTriggered: {
+      if (!root.loaded) return
+      root.sample()
+      tick.restart()
+    }
   }
 
   // Settings can change from outside the UI (CLI, or a leftover restore after
@@ -325,7 +345,14 @@ Item {
     clearEnvironment: true
     environment: root.cleanEnvironment
     stdinEnabled: false
-    stdout: null
+    // sleep-watch.sh prints "resume" after PrepareForSleep(false); ignore
+    // anything else on this channel.
+    stdout: SplitParser {
+      onRead: function(line) {
+        if (String(line).trim() !== "resume") return
+        resumeSample.restart()
+      }
+    }
     stderr: null
     onStarted: { root.sleepWatchRunning = true; root.sleepError = "" }
     onExited: function(code, status) {

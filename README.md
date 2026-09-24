@@ -33,7 +33,9 @@ Silicon / `s2idle` case is why this fork exists.
   block is reconciled when the plugin starts or stops).
 - **Sleep periods**: measured suspends grouped by which radios were off, each
   group with its own average power. One line per sleep: start → end, W · Wh.
-  Only on-battery sleeps with a reading the gauge can resolve are listed.
+  A finished sleep appears as soon as the machine wakes (the watcher triggers a
+  sample on resume); the next regular sample refines the energy figure. Only
+  on-battery sleeps with a reading the gauge can resolve are listed.
 - **Logging**: every 60 s sample carries the settings in effect
   (`bt=off;wifi=keep`), and `events.tsv` records settings changes plus each
   sleep's pre/post actions, so measurements can be traced back to the setting.
