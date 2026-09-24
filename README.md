@@ -63,7 +63,7 @@ Updates come from this repo with `omarchy plugin update ericvrp.sleep-actions`.
 To merge changes from the original, add it as a remote:
 `git remote add upstream https://github.com/hungmi/omarchy-battery-session.git`.
 
-Then click the battery icon in the bar: the "Sleep periods" list fills as you
+Then click the battery icon in the bar: the sleep-period list fills as you
 suspend on battery, grouped by the checkboxes' settings.
 
 ## Credits

@@ -160,10 +160,87 @@ BarWidget {
         font.pixelSize: Style.font.caption
       }
 
-      PanelSectionHeader {
-        text: root.t("sleepSection")
-        foreground: root.bar.foreground
-        fontFamily: root.bar.fontFamily
+      // Header row: the section title on the left, the Folder / Clear icon
+      // actions on the right. On hover they get the shell's themed hover fill
+      // plus a brighter glyph (same tokens the built-in panels use for their
+      // inline actions), so they read as clickable.
+      Row {
+        width: parent.width
+        spacing: Style.space(10)
+
+        PanelSectionHeader {
+          text: root.t("sleepSection")
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+          width: parent.width - folderItem.width - clearItem.width - parent.spacing * 2
+        }
+
+        Item {
+          id: folderItem
+          width: folderIcon.implicitWidth + Style.space(16)
+          height: folderIcon.implicitHeight + Style.space(6)
+
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.cornerRadius
+            color: folderMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+            Behavior on color { ColorAnimation { duration: 80 } }
+          }
+
+          Text {
+            id: folderIcon
+            anchors.centerIn: parent
+            text: "󰉋"
+            color: folderMouse.containsMouse ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.body
+            Behavior on color { ColorAnimation { duration: 80 } }
+          }
+
+          MouseArea {
+            id: folderMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: if (root.service) root.service.openDataDir()
+          }
+        }
+
+        Item {
+          id: clearItem
+          width: clearIcon.implicitWidth + Style.space(16)
+          height: clearIcon.implicitHeight + Style.space(6)
+
+          Rectangle {
+            anchors.fill: parent
+            radius: Style.cornerRadius
+            color: clearMouse.containsMouse && clearMouse.enabled
+              ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+            Behavior on color { ColorAnimation { duration: 80 } }
+          }
+
+          Text {
+            id: clearIcon
+            anchors.centerIn: parent
+            text: "󰆴"
+            color: root.clearArmed ? Color.urgent
+              : clearMouse.containsMouse && clearMouse.enabled ? root.bar.barForeground
+              : Qt.darker(root.bar.foreground, 1.5)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.body
+            font.bold: root.clearArmed
+            Behavior on color { ColorAnimation { duration: 80 } }
+          }
+
+          MouseArea {
+            id: clearMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            enabled: !root.service || !root.service.clearing
+            onClicked: root.armOrClear()
+          }
+        }
       }
 
       Row {
@@ -200,61 +277,6 @@ BarWidget {
       }
 
       PanelSeparator { foreground: root.bar.foreground }
-
-      Row {
-        width: parent.width
-        spacing: Style.space(10)
-
-        PanelSectionHeader {
-          text: root.t("sleepPeriods")
-          foreground: root.bar.foreground
-          fontFamily: root.bar.fontFamily
-          width: parent.width - folderItem.width - clearItem.width - parent.spacing * 2
-        }
-
-        Item {
-          id: folderItem
-          width: folderText.implicitWidth
-          height: folderText.implicitHeight
-
-          Text {
-            id: folderText
-            anchors.fill: parent
-            text: root.t("folder")
-            color: Qt.darker(root.bar.foreground, 1.5)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: if (root.service) root.service.openDataDir()
-          }
-        }
-
-        Item {
-          id: clearItem
-          width: clearText.implicitWidth
-          height: clearText.implicitHeight
-
-          Text {
-            id: clearText
-            anchors.fill: parent
-            text: root.clearArmed ? root.t("clearSure") : root.t("clear")
-            color: root.clearArmed ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            enabled: !root.service || !root.service.clearing
-            onClicked: root.armOrClear()
-          }
-        }
-      }
 
       Text {
         visible: !root.summary || root.summary.sleepGroups.length === 0
