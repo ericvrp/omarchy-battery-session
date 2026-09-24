@@ -54,6 +54,9 @@ Item {
   // Sleep action state, mirrored from sleepctl.sh get. Keys are the settings
   // file keys, values are "keep" or "off".
   property var sleepOptions: ({ bluetooth: "keep", wifi: "keep" })
+  // Per-group stat cutoffs: {group: wall}. Periods of that type starting at or
+  // before the wall are left out of the summary (see Model.sleepPeriods).
+  property var deletedGroups: ({})
   property bool sleepWatchRunning: false
   property string sleepError: ""
   property string dataDir: ""
@@ -62,7 +65,7 @@ Item {
   readonly property alias clearing: clearProc.running
 
   function recompute() {
-    root.summary = Model.summarize(root.rows, Math.floor(Date.now() / 1000))
+    root.summary = Model.summarize(root.rows, Math.floor(Date.now() / 1000), root.deletedGroups)
   }
   function capRows(list) {
     return list.length > root.maxRows ? list.slice(list.length - root.maxRows) : list
@@ -119,6 +122,8 @@ Item {
   Watchdog { id: setWatch }
   Watchdog { id: clearWatch }
   Watchdog { id: pathWatch }
+  Watchdog { id: deletedWatch }
+  Watchdog { id: deleteWatch }
 
   // ---- startup: bounded history dump, then the first sample ----
   Process {
@@ -304,10 +309,82 @@ Item {
       clearWatch.disarm()
       if (status === 0 && code === 0) {
         root.rows = []
+        root.deletedGroups = ({})
         root.recompute()
       } else if (status === 0) {
         root.sleepError = "errSleepActions"
       }
+    }
+  }
+
+  // ---- per-group stat delete ----
+  // sleepctl.sh stores a cutoff per group; periods of that type starting at or
+  // before it are left out of the summary. The samples stay on disk, so the
+  // sessions and awake-time figures keep working, and new sleeps of the same
+  // type measure fresh.
+  function parseDeleted(text) {
+    var out = {}
+    var lines = String(text || "").split("\n")
+    for (var i = 0; i < lines.length; i++) {
+      var kv = lines[i].split("=")
+      if (kv.length !== 2) continue
+      if (kv[0] !== "none" && kv[0] !== "bt" && kv[0] !== "wifi" && kv[0] !== "both") continue
+      var w = parseInt(kv[1], 10)
+      if (!isFinite(w) || w <= 1500000000) continue
+      out[kv[0]] = w
+    }
+    return out
+  }
+
+  function refreshDeleted() {
+    if (deletedProc.running || deleteProc.running) return
+    deletedProc.command = root.scriptCommand("sleepctl.sh").concat(["deleted"])
+    deletedProc.running = true
+  }
+
+  function deleteGroup(key) {
+    if (key !== "none" && key !== "bt" && key !== "wifi" && key !== "both") return
+    if (deleteProc.running) return
+    var next = {}
+    for (var k in root.deletedGroups) next[k] = root.deletedGroups[k]
+    next[key] = Math.floor(Date.now() / 1000)
+    root.deletedGroups = next               // optimistic; the file is the truth
+    root.recompute()
+    deleteProc.command = root.scriptCommand("sleepctl.sh").concat(["delete", key])
+    deleteProc.running = true
+  }
+
+  Process {
+    id: deletedProc
+    running: true
+    command: root.scriptCommand("sleepctl.sh").concat(["deleted"])
+    clearEnvironment: true
+    environment: root.cleanEnvironment
+    stdinEnabled: false
+    stderr: null
+    stdout: StdioCollector {
+      onStreamFinished: {
+        root.deletedGroups = root.parseDeleted(String(text))
+        root.recompute()
+      }
+    }
+    onStarted: deletedWatch.arm(deletedProc, root.helperDeadlineSec)
+    onExited: function(code, status) { deletedWatch.disarm() }
+  }
+
+  Process {
+    id: deleteProc
+    running: false
+    clearEnvironment: true
+    environment: root.cleanEnvironment
+    stdinEnabled: false
+    stdout: null
+    stderr: null
+    onStarted: deleteWatch.arm(deleteProc, root.helperDeadlineSec)
+    onExited: function(code, status) {
+      deleteWatch.disarm()
+      if (status === 0 && code !== 0) root.sleepError = "errSleepActions"
+      root.refreshDeleted()
     }
   }
 

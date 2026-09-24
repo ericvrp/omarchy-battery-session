@@ -42,7 +42,9 @@ Silicon / `s2idle` case is why this fork exists.
   The sampler's 60 s cadence feeds the energy (Wh) statistics only.
 - **Folder / Copy / Clear** icon buttons in the panel: open the database
   folder, copy the sleep statistics as text to the clipboard, or delete the
-  recorded samples (two-step confirmation).
+  recorded samples (two-step confirmation). Each sleep group also has its own
+  delete icon: it stops that type of period from counting (also two-step),
+  leaving the sample history and the other groups intact.
 - **Own database**: samples and the event log live in
   `~/.local/share/sleep-actions/`, not in the original plugin's directory.
 - Plugin id renamed to `ericvrp.sleep-actions`; the original

@@ -115,6 +115,12 @@ check(ctx.chargeKind({ state: "Discharging", ac: "0" }) === "discharging"
       && ctx.chargeKind({ state: "Not charging", ac: "1" }) === "full",
       "chargeKind: discharging / charging / full")
 
-const checks = cases.length + parseCases.length + 8
+// Group delete: a cutoff hides periods of that type that started up to it.
+check(ctx.summarize(sleepRows, T0 + 4000, { bt: T0 + 10000 }).sleepGroups.length === 0,
+      "summarize: group cutoff hides earlier periods of that type")
+check(ctx.summarize(sleepRows, T0 + 4000, { bt: T0 }).sleepGroups.length === 1,
+      "summarize: group cutoff keeps later periods of that type")
+
+const checks = cases.length + parseCases.length + 10
 console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)

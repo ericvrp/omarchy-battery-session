@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ericvrp.sleep-actions",
   "name": "Sleep Actions",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "author": "Eric van Riet Paap; original Battery Session by hungmi (https://github.com/hungmi)",
   "license": "MIT",
   "description": "Battery glyph and charge in the bar, plus sleep-time radio actions with per-sleep W/Wh statistics grouped by setting. Fork of hungmi.battery-session to measure suspend drain on Apple Silicon (Omarchy/Asahi).",

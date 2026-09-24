@@ -11,6 +11,9 @@
 #   status                 print what this plugin has blocked right now
 #   path                   print the database directory (for the Folder link)
 #   clear                  delete the recorded sample history (stats only)
+#   deleted                print the per-group delete cutoffs (group=wall)
+#   delete <group>         stop counting existing periods of that group
+#                          (none|bt|wifi|both); samples are left untouched
 #   apply-pre              run the configured pre-suspend actions
 #   apply-post             restore whatever apply-pre changed
 #   reconcile              restore leftovers (start/stop of the watcher)
@@ -23,6 +26,7 @@
 #
 # State and logs:
 #   ~/.local/state/omarchy/sleep-actions/applied   what this plugin blocked
+#   ~/.local/state/omarchy/sleep-actions/deleted   per-group stat cutoffs
 #   ~/.local/share/sleep-actions/events.tsv      timestamped action log
 #
 # Trust boundary: parsing is bash builtins; external programs are all by
@@ -72,6 +76,7 @@ ensure_dir "$home/.config/omarchy" || exit 5
 
 cfg=$home/.config/omarchy/sleep-actions.conf
 applied=$state/applied
+deleted=$state/deleted
 events=$data/events.tsv
 
 wall_now() {
@@ -159,6 +164,67 @@ write_applied() {
   fi
   if ! owned_file "$tmp"; then $RM -f -- "$tmp"; exit 5; fi
   $MV -f -- "$tmp" "$applied" || { $RM -f -- "$tmp"; exit 5; }
+}
+
+# ---- per-group stat cutoffs (delete one type of period) ----
+del_none=""; del_bt=""; del_wifi=""; del_both=""
+
+load_deleted() {
+  del_none=""; del_bt=""; del_wifi=""; del_both=""
+  [[ -f $deleted && ! -L $deleted && -O $deleted && -r $deleted ]] || return 0
+  local k v n=0
+  while IFS='=' read -r k v; do
+    (( n++ >= 8 )) && break
+    [[ $v =~ ^[0-9]{1,12}$ ]] || continue
+    case $k in
+      none) del_none=$v ;;
+      bt)   del_bt=$v ;;
+      wifi) del_wifi=$v ;;
+      both) del_both=$v ;;
+    esac
+  done < "$deleted"
+}
+
+write_deleted() {
+  local tmp="$state/.deleted.tmp.$$" body=""
+  [[ -n $del_none ]] && body+="none=$del_none"$'\n'
+  [[ -n $del_bt ]] && body+="bt=$del_bt"$'\n'
+  [[ -n $del_wifi ]] && body+="wifi=$del_wifi"$'\n'
+  [[ -n $del_both ]] && body+="both=$del_both"$'\n'
+  if [[ -z $body ]]; then
+    # No cutoffs left: remove the file so a cleared state leaves nothing behind.
+    [[ -e $deleted && ! -L $deleted ]] && owned_file "$deleted" && $RM -f -- "$deleted"
+    return 0
+  fi
+  if ! printf '%s' "$body" \
+      | $DD of="$tmp" conv=excl,notrunc oflag=nofollow status=none; then
+    $RM -f -- "$tmp"
+    exit 5
+  fi
+  if ! owned_file "$tmp"; then $RM -f -- "$tmp"; exit 5; fi
+  $MV -f -- "$tmp" "$deleted" || { $RM -f -- "$tmp"; exit 5; }
+}
+
+do_deleted() {
+  load_deleted
+  [[ -n $del_none ]] && printf 'none=%s\n' "$del_none"
+  [[ -n $del_bt ]] && printf 'bt=%s\n' "$del_bt"
+  [[ -n $del_wifi ]] && printf 'wifi=%s\n' "$del_wifi"
+  [[ -n $del_both ]] && printf 'both=%s\n' "$del_both"
+}
+
+do_delete() {  # do_delete <group>, group already validated
+  load_deleted
+  local w
+  w=$(wall_now) || exit 6
+  case $1 in
+    none) del_none=$w ;;
+    bt)   del_bt=$w ;;
+    wifi) del_wifi=$w ;;
+    both) del_both=$w ;;
+  esac
+  write_deleted
+  log_event delete "$1 until $w"
 }
 
 # ---- radios ----
@@ -254,12 +320,15 @@ do_status() {
 }
 
 # Delete the recorded stats (month files). Settings, state and the event log
-# are kept; the sampler recreates the month file on its next run.
+# are kept; the sampler recreates the month file on its next run. The per-group
+# cutoffs go too, since the periods they referred to are gone.
 do_clear() {
   local f
   for f in "$data"/[0-9][0-9][0-9][0-9]-[0-9][0-9].tsv; do
     owned_file "$f" && $RM -f -- "$f"
   done
+  del_none=""; del_bt=""; del_wifi=""; del_both=""
+  write_deleted
   log_event clear "sample history removed"
 }
 
@@ -283,6 +352,16 @@ case $mode in
     ;;
   clear)
     do_clear
+    ;;
+  deleted)
+    do_deleted
+    ;;
+  delete)
+    (( $# >= 2 )) || exit 2
+    case $2 in
+      none|bt|wifi|both) do_delete "$2" ;;
+      *) exit 2 ;;
+    esac
     ;;
   apply-pre)
     do_pre

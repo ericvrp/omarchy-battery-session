@@ -82,7 +82,12 @@ BarWidget {
   readonly property bool opened: popupOpen
   function open() { popupOpen = true }
   function close() { popupOpen = false }
-  onPopupOpenChanged: if (!popupOpen) { root.clearArmed = false; clearDisarm.stop() }
+  onPopupOpenChanged: if (!popupOpen) {
+    root.clearArmed = false
+    clearDisarm.stop()
+    root.armedGroup = ""
+    groupDisarm.stop()
+  }
 
   // Two-step clear: first click arms, second click deletes the recorded stats.
   property bool clearArmed: false
@@ -112,7 +117,7 @@ BarWidget {
   }
   function statsText() {
     var s = root.summary
-    var lines = [root.t("sleepPeriods")]
+    var lines = []
     if (!s || s.sleepGroups.length === 0) {
       lines.push(root.t("sleepNoData"))
       return lines.join("\n") + "\n"
@@ -133,6 +138,25 @@ BarWidget {
     Quickshell.clipboardText = root.statsText()
     root.copyDone = true
     copyReset.restart()
+  }
+
+  // Per-group delete: first click arms (the icon turns urgent), a second click
+  // deletes the recorded periods of that type.
+  property string armedGroup: ""
+  Timer {
+    id: groupDisarm
+    interval: 4000
+    onTriggered: root.armedGroup = ""
+  }
+  function armOrDeleteGroup(key) {
+    if (root.armedGroup === key) {
+      root.armedGroup = ""
+      groupDisarm.stop()
+      if (root.service) root.service.deleteGroup(key)
+    } else {
+      root.armedGroup = key
+      groupDisarm.restart()
+    }
   }
 
   // Icon and charge percentage only.
@@ -389,15 +413,63 @@ BarWidget {
             width: parent.width
             spacing: Style.space(2)
 
-            Text {
+            Row {
               width: parent.width
-              text: root.groupLabel(modelData.key)
-                    + (modelData.avgW !== null ? "   " + root.fmtW(modelData.avgW) : "")
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.body
-              font.bold: true
-              elide: Text.ElideRight
+              spacing: Style.space(6)
+
+              Text {
+                width: parent.width - groupDeleteItem.width - parent.spacing
+                text: root.groupLabel(modelData.key)
+                      + (modelData.avgW !== null ? "   " + root.fmtW(modelData.avgW) : "")
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.body
+                font.bold: true
+                elide: Text.ElideRight
+              }
+
+              // Delete just this group's periods: first click arms, second
+              // deletes. The samples stay on disk; only the periods of this
+              // type stop counting in the stats.
+              Item {
+                id: groupDeleteItem
+                width: groupDeleteIcon.implicitWidth + Style.space(12)
+                height: groupDeleteIcon.implicitHeight + Style.space(4)
+
+                Rectangle {
+                  anchors.fill: parent
+                  radius: Style.cornerRadius
+                  color: groupDeleteMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+                  Behavior on color { ColorAnimation { duration: 80 } }
+                }
+
+                Text {
+                  id: groupDeleteIcon
+                  anchors.centerIn: parent
+                  text: "󰆴"
+                  color: root.armedGroup === modelData.key ? Color.urgent
+                    : groupDeleteMouse.containsMouse ? root.bar.barForeground
+                    : Qt.darker(root.bar.foreground, 1.5)
+                  font.family: root.bar.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: root.armedGroup === modelData.key
+                  Behavior on color { ColorAnimation { duration: 80 } }
+                }
+
+                MouseArea {
+                  id: groupDeleteMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.armOrDeleteGroup(modelData.key)
+                }
+
+                PanelToolTip {
+                  visible: groupDeleteMouse.containsMouse
+                  text: root.armedGroup === modelData.key ? root.t("clearSureTip") : root.t("groupDeleteTip")
+                  fontFamily: root.bar.fontFamily
+                }
+              }
             }
 
             Repeater {

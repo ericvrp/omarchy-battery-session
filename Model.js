@@ -120,7 +120,10 @@ function settingsGroup(raw) {
 // On-battery windows get an energy figure (with the post-resume gauge settle
 // correction); sleeps on the charger are kept so they still appear, but have no
 // power figure of their own. group says what was turned off during the sleep.
-function sleepPeriods(rows, hz) {
+// deleted maps a group to a cutoff wall time: periods of that type that started
+// at or before it are left out (the samples stay untouched, so sessions and
+// awake time are unaffected; deleting a group must not mangle the history).
+function sleepPeriods(rows, hz, deleted) {
   var out = []
   if (!hz) return out
   for (var i = 1; i < rows.length; i++) {
@@ -135,6 +138,8 @@ function sleepPeriods(rows, hz) {
 
     var raw = a.settings || b.settings || ""     // the sample before suspend is the policy that was active
     var charger = !(onBattery(a) && onBattery(b))
+    var group = charger ? "charger" : settingsGroup(raw)
+    if (deleted && Number(deleted[group] || 0) >= a.wall) continue
     var usedWh = null
     if (!charger && sleep >= MIN_MEASURE && a.wh !== null && b.wh !== null) {
       // The fuel gauge relaxes for about a minute after resume; its first
@@ -167,7 +172,7 @@ function sleepPeriods(rows, hz) {
       pctPerHour: pctDrop !== null ? pctDrop * 3600 / sleep : null,
       settingsRaw: raw,
       settings: parseSettings(raw),
-      group: charger ? "charger" : settingsGroup(raw)
+      group: group
     })
   }
   return out
@@ -254,7 +259,8 @@ function summarizeSeg(seg, hz, live, now) {
 }
 
 // Main entry. state: "empty" no data / "calibrating" HZ not determined yet / "ok"
-function summarize(rows, now) {
+// deleted: optional {group: cutoffWall} map, see sleepPeriods.
+function summarize(rows, now, deleted) {
   var hz = detectHz(rows)
   var segs = sessions(rows)
   var last = rows.length ? rows[rows.length - 1] : null
@@ -296,7 +302,7 @@ function summarize(rows, now) {
   // a usable energy reading are listed: charger sleeps have no meaningful drain
   // figure, and short sleeps the gauge cannot resolve are omitted as well. Each
   // group carries its own average over every measured period in history.
-  var periods = sleepPeriods(rows, hz)
+  var periods = sleepPeriods(rows, hz, deleted)
   out.sleepCount = periods.length
   out.sleepGroups = []
   for (var g = 0; g < GROUP_ORDER.length; g++) {
