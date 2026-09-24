@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Services.UPower
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
@@ -41,16 +42,48 @@ BarWidget {
       : root.t("sleepGroupUnknown")
   }
 
-  // Icon follows the charge state: filled level while discharging, a charging
-  // glyph while charging, a charged glyph when full/topped up.
-  readonly property string batteryGlyph: {
-    if (!root.summary) return "󰁹"
-    if (root.summary.lastKind === "charging") return "󰂄"
-    if (root.summary.lastKind === "full") return "󰂅"
-    var p = root.summary.lastPct === null ? 100 : root.summary.lastPct
+  // Live state from UPower, the same source the built-in power panel uses:
+  // plug/unplug reaches the bar immediately, instead of waiting for the next
+  // 60 s sample. The sampler keeps feeding the Wh statistics only.
+  readonly property var upDev: UPower.displayDevice
+  readonly property bool upPresent: !!(upDev && upDev.isPresent)
+  function upStates() {
+    return {
+      Charging: UPowerDeviceState.Charging,
+      Discharging: UPowerDeviceState.Discharging,
+      FullyCharged: UPowerDeviceState.FullyCharged,
+      PendingCharge: UPowerDeviceState.PendingCharge
+    }
+  }
+  // Charge limit active, or UPower briefly claiming FullyCharged right after
+  // plug-in: show the level rather than flash the charged glyph (heuristic
+  // shared with the built-in power panel, see Model.chargeThresholdActive).
+  readonly property bool upThreshold: upPresent
+    ? Model.chargeThresholdActive(upDev, UPower.onBattery, upStates()) : false
+  // Percentage shown in the bar: live when UPower has a device, else the last sample.
+  readonly property var dispPct: upPresent
+    ? Math.round(Math.max(0, Math.min(1, upDev.percentage)) * 100)
+    : (summary ? summary.lastPct : null)
+
+  function levelGlyph(p) {
     return p >= 95 ? "󰁹" : p >= 85 ? "󰂂" : p >= 75 ? "󰂁" : p >= 65 ? "󰂀"
          : p >= 55 ? "󰁿" : p >= 45 ? "󰁾" : p >= 35 ? "󰁽" : p >= 25 ? "󰁼"
          : p >= 15 ? "󰁻" : p >= 5 ? "󰁺" : "󰂃"
+  }
+
+  // Icon follows the charge state: filled level while discharging, a charging
+  // glyph while charging, a charged glyph when full/topped up.
+  readonly property string batteryGlyph: {
+    if (root.upPresent) {
+      if (!root.upThreshold && root.upDev.state === UPowerDeviceState.FullyCharged) return "󰂅"
+      if (!root.upThreshold && !UPower.onBattery) return "󰂄"
+      return root.levelGlyph(root.dispPct === null ? 100 : root.dispPct)
+    }
+    // UPower not up yet: fall back to the last sampled state.
+    if (!root.summary) return "󰁹"
+    if (root.summary.lastKind === "charging") return "󰂄"
+    if (root.summary.lastKind === "full") return "󰂅"
+    return root.levelGlyph(root.summary.lastPct === null ? 100 : root.summary.lastPct)
   }
 
   property bool popupOpen: false
@@ -99,8 +132,8 @@ BarWidget {
     Text {
       id: pctText
       anchors.verticalCenter: parent.verticalCenter
-      visible: root.summary && root.summary.lastPct !== null
-      text: root.summary && root.summary.lastPct !== null ? root.summary.lastPct + "%" : ""
+      visible: root.dispPct !== null
+      text: root.dispPct !== null ? root.dispPct + "%" : ""
       color: root.bar.barForeground
       font.family: root.bar.fontFamily
       font.pixelSize: Style.font.body

@@ -115,6 +115,21 @@ check(ctx.chargeKind({ state: "Discharging", ac: "0" }) === "discharging"
       && ctx.chargeKind({ state: "Not charging", ac: "1" }) === "full",
       "chargeKind: discharging / charging / full")
 
-const checks = cases.length + parseCases.length + 8
+// chargeThresholdActive: charge-limit handling for the live bar icon.
+const T = { Charging: 1, Discharging: 2, FullyCharged: 3, PendingCharge: 4 }
+const thresholdCases = [
+  ["on battery never counts as a limit", { isPresent: true, percentage: 0.8, state: T.Charging }, true, false],
+  ["discharging with a charger present is not a limit", { isPresent: true, percentage: 0.8, state: T.Discharging }, false, false],
+  ["FullyCharged below 99% on plug-in is a limit (anti-flash)", { isPresent: true, percentage: 0.8, state: T.FullyCharged }, false, true],
+  ["PendingCharge is a limit", { isPresent: true, percentage: 0.8, state: T.PendingCharge }, false, true],
+  ["Charging with no energy flowing is a limit", { isPresent: true, percentage: 0.8, state: T.Charging, changeRate: 0 }, false, true],
+  ["normal charging is not a limit", { isPresent: true, percentage: 0.8, state: T.Charging, changeRate: 5, timeToFull: 1800 }, false, false],
+  ["full battery is not a limit", { isPresent: true, percentage: 1, state: T.FullyCharged }, false, false],
+]
+for (const [name, dev, onBatt, want] of thresholdCases) {
+  check(ctx.chargeThresholdActive(dev, onBatt, T) === want, "chargeThresholdActive: " + name)
+}
+
+const checks = cases.length + parseCases.length + 8 + thresholdCases.length
 console.log(fail ? `\n${fail} failed` : `\n${checks} passed`)
 process.exit(fail ? 1 : 0)
