@@ -1,6 +1,8 @@
-# Sleep Actions
+# omarchy-battery-session
 
-**A derived work by Eric van Riet Paap**, forked from **Battery Session** by
+An Omarchy bar plugin, installed as `ericvrp.sleep-actions` (*Sleep Actions* in
+the shell). **A derived work by Eric van Riet Paap**, forked from
+**Battery Session** by
 [hungmi](https://github.com/hungmi)
 ([hungmi/omarchy-battery-session](https://github.com/hungmi/omarchy-battery-session)).
 The original plugin's README is kept verbatim at the bottom of this file, and
@@ -23,7 +25,8 @@ Silicon / `s2idle` case is why this fork exists.
 ## What this fork adds on top of Battery Session
 
 - **Bar**: a state icon (level while discharging, bolt while charging, charged
-  glyph when full) and the charge percentage.
+  glyph when full) and the charge percentage, both live from UPower — plugging
+  and unplugging shows up at once instead of at the next sample.
 - **Sleep actions**: two checkboxes, *Bluetooth* and *Wi-Fi*, under
   "Turn off while sleeping". Checked means the radio is blocked with `rfkill`
   right before suspend and unblocked again on wake (no root needed; a leftover
@@ -34,6 +37,7 @@ Silicon / `s2idle` case is why this fork exists.
 - **Logging**: every 60 s sample carries the settings in effect
   (`bt=off;wifi=keep`), and `events.tsv` records settings changes plus each
   sleep's pre/post actions, so measurements can be traced back to the setting.
+  The sampler's 60 s cadence feeds the energy (Wh) statistics only.
 - **Folder / Clear** links in the panel: open the database folder, or delete
   the recorded samples (two-step confirmation).
 - **Own database**: samples and the event log live in
@@ -44,10 +48,18 @@ Silicon / `s2idle` case is why this fork exists.
 ## Install this fork
 
 ```bash
-git clone https://github.com/ericvrp/omarchy-battery-session.git ~/.config/omarchy/plugins/ericvrp.sleep-actions
-omarchy-shell shell rescanPlugins
+omarchy plugin add https://github.com/ericvrp/omarchy-battery-session.git --enable
+```
+
+The plugin id is `ericvrp.sleep-actions`. If the widget is not in the bar yet:
+
+```bash
 omarchy plugin enable ericvrp.sleep-actions --section right
 ```
+
+Updates come from this repo with `omarchy plugin update ericvrp.sleep-actions`.
+To merge changes from the original, add it as a remote:
+`git remote add upstream https://github.com/hungmi/omarchy-battery-session.git`.
 
 Then click the battery icon in the bar: the "Sleep periods" list fills as you
 suspend on battery, grouped by the checkboxes' settings.
@@ -57,7 +69,8 @@ suspend on battery, grouped by the checkboxes' settings.
 - **hungmi** — original Battery Session: the sampler, awake-time model, bar
   widget, translations and the documentation kept below.
 - **Eric van Riet Paap** — this fork: sleep-time radio actions, sleep-period
-  measurement and grouping, logging, packaging and documentation.
+  measurement and grouping, live UPower bar state, logging, packaging and
+  documentation.
 
 ---
 
