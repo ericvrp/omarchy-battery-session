@@ -238,43 +238,6 @@ BarWidget {
           spacing: Style.space(4)
 
           Item {
-            id: folderItem
-            width: folderIcon.implicitWidth + Style.space(16)
-            height: folderIcon.implicitHeight + Style.space(6)
-
-            Rectangle {
-              anchors.fill: parent
-              radius: Style.cornerRadius
-              color: folderMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
-              Behavior on color { ColorAnimation { duration: 80 } }
-            }
-
-            Text {
-              id: folderIcon
-              anchors.centerIn: parent
-              text: "󰉋"
-              color: folderMouse.containsMouse ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.body
-              Behavior on color { ColorAnimation { duration: 80 } }
-            }
-
-            MouseArea {
-              id: folderMouse
-              anchors.fill: parent
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: if (root.service) root.service.openDataDir()
-            }
-
-            PanelToolTip {
-              visible: folderMouse.containsMouse
-              text: root.t("folderTip")
-              fontFamily: root.bar.fontFamily
-            }
-          }
-
-          Item {
             id: copyItem
             width: copyIcon.implicitWidth + Style.space(16)
             height: copyIcon.implicitHeight + Style.space(6)
@@ -309,6 +272,43 @@ BarWidget {
             PanelToolTip {
               visible: copyMouse.containsMouse
               text: root.copyDone ? root.t("copyDoneTip") : root.t("copyTip")
+              fontFamily: root.bar.fontFamily
+            }
+          }
+
+          Item {
+            id: folderItem
+            width: folderIcon.implicitWidth + Style.space(16)
+            height: folderIcon.implicitHeight + Style.space(6)
+
+            Rectangle {
+              anchors.fill: parent
+              radius: Style.cornerRadius
+              color: folderMouse.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            Text {
+              id: folderIcon
+              anchors.centerIn: parent
+              text: "󰉋"
+              color: folderMouse.containsMouse ? root.bar.barForeground : Qt.darker(root.bar.foreground, 1.5)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.body
+              Behavior on color { ColorAnimation { duration: 80 } }
+            }
+
+            MouseArea {
+              id: folderMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: if (root.service) root.service.openDataDir()
+            }
+
+            PanelToolTip {
+              visible: folderMouse.containsMouse
+              text: root.t("folderTip")
               fontFamily: root.bar.fontFamily
             }
           }
